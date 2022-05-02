@@ -292,22 +292,13 @@ class fighter(pygame.sprite.Sprite):
             else:
                 self.launching = False
         self.update_state() # 回复能量和冷却
+        
     def update_state(self):
         self.HP = np.clip(self.HP+self.HP_recover,0,self.HP_max)
         self.energy = np.clip(self.energy+self.energy_recover,0,self.energy_max)
         delta_cooling = -(self.init_shooting_cd/self.shooting_cd)*\
                       (self.shoot1+self.shoot2+self.shoot3)*0.05*self.shooting
         self.cooling = np.clip(self.cooling+self.cooling_recover+delta_cooling,0,self.cooling_max)
-        # if self.energy > self.energy_max:
-        #     self.energy = self.energy_max
-        # elif self.energy < 0:
-        #     self.energy = 0
-        # if self.cooling > self.cooling_max-(self.init_shooting_cd/self.shooting_cd)*\
-        #               (self.shoot1+self.shoot2+self.shoot3)*5*self.shooting:
-        #     self.cooling = self.cooling_max-(self.init_shooting_cd/self.shooting_cd)*\
-        #               (self.shoot1+self.shoot2+self.shoot3)*5*self.shooting
-        # elif self.cooling < 0:
-        #     self.cooling = 0
         
     def hurt(self,damage):
         threading.Thread(target=thread_play_music,args=(self.hit_sound_file,)).start()
@@ -317,6 +308,7 @@ class fighter(pygame.sprite.Sprite):
             explode0 = explode(self.screen,self.rect.center)
             background_Group.add(explode0)
             self.HP = 0
+            
     def dead(self):
         threading.Thread(target=thread_play_music,args=(self.explode_sound_file,)).start()
         self.alive_ = False
@@ -484,7 +476,8 @@ class enemy(pygame.sprite.Sprite):
         self.img_ad = os.path.join(enemy_path,enemy_dict['filename'][self.ID])
         self.init_image = pygame.image.load(self.img_ad)
         self.image = pygame.transform.rotate(self.init_image,self.agl)  # 加载图形，并缩小像素
-        self.sound = pygame.mixer.Sound(CONFIG['enemy']['explode_mp3'])
+        self.sound = pygame.mixer.Sound(CONFIG['enemy']['explode_sound_file'])
+        self.hurt_sound = pygame.mixer.Sound(CONFIG['enemy']['hurt_sound_file'])
         self.gold = int(enemy_dict['gold'][self.ID])
         self.diamond = float(enemy_dict['diamond'][self.ID])
         self.score = int(enemy_dict['score'][self.ID])
@@ -561,6 +554,7 @@ class enemy(pygame.sprite.Sprite):
         if self.HP < 0:
             self.dead()
             self.HP = 0
+        threading.Thread(target=play_music,args=(self.hurt_sound,)).start()
     def dead(self):
         self.kill()
         diamond_prob = np.random.rand()
@@ -571,7 +565,7 @@ class enemy(pygame.sprite.Sprite):
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长
         explode0 = explode(self.screen,self.rect.center,(explode_r,explode_r))
         background_Group.add(explode0) 
-        threading.Thread(target=play_music,args=(self.sound,0.5)).start()
+        threading.Thread(target=play_music,args=(self.sound,)).start()
 # 场景函数
 """场景1:
 在指定屏幕上生成N个型号为ID的敌机，每架敌机只会在t0时刻向player发射一发速度为bullet_speed的
@@ -625,9 +619,8 @@ class scene1():
             background_Group.add(warning0)
             self.update_time()
         # 判断场景中的敌人是否该移动/删除
-        self.has_N = len(self.enemy_group.sprites())
-        for i in range(self.has_N):
-            enemy0 = self.enemy_group.sprites()[i]
+        for enemy0 in self.enemy_group.sprites():
+            assert isinstance(enemy0,enemy), "Class must be enemy!"
             if not enemy0.need_to_remove:
                 enemy0.update_time()
                 if enemy0.time - self.init_time > (enemy0.data[3]+1)*self.dt*1000:
@@ -635,8 +628,8 @@ class scene1():
                 if enemy0.data[0] >= enemy0.data[2] - 1:
                     enemy0.need_to_remove = True
         # 对场景中的敌人进行移动
-        for i in range(self.has_N):
-            enemy0 = self.enemy_group.sprites()[i]
+        for enemy0 in self.enemy_group.sprites():
+            assert isinstance(enemy0,enemy), "Class must be enemy!"
             if enemy0.need_to_move and not enemy0.need_to_remove:
                 enemy0.data[0] += 1
                 if enemy0.data[0] > self.point[enemy0.data[1]]:
@@ -655,15 +648,15 @@ class scene1():
                         enemy0.shooted = True
         # 所有敌人都需删除，场景删除所有敌人并不再更新
         flag = True
-        for i in range(self.has_N):
-            flag = flag and self.enemy_group.sprites()[i].need_to_remove
+        for enemy0 in self.enemy_group.sprites():
+            assert isinstance(enemy0,enemy), "Class must be enemy!"
+            flag = flag and enemy0.need_to_remove
         self.need_to_end = flag
         if self.need_to_end:
             self.end()
     def end(self):
-        for i in range(self.has_N):
-            self.enemy_group.sprites()[i].remove(enemy_Group) # 将敌机从总组中删除
-        self.enemy_group.empty()# 删除场景中的敌机组
+        for sprite in self.enemy_group.sprites():
+            sprite.kill()
     @staticmethod
     def create(cls_info):
         assert isinstance(cls_info,dict), "scene info must be dict"

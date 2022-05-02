@@ -13,7 +13,7 @@ player:
   bullet_sound_file: fighter_bullet_fire.mp3
   missile_sound_file: fighter_missile_fire.mp3
   explode_sound_file: fighter_explode.mp3
-  hit_sound_file: metal1.mp3
+  hit_sound_file: hurt2.wav
 
 
 bullet:
@@ -23,7 +23,8 @@ bullet:
 enemy:
   path: enemy_png
   setting: data/enemy_info.csv
-  explode_mp3: Sound_effect/small_explode.wav
+  explode_sound_file: Sound_effect/small_explode.wav
+  hurt_sound_file: Sound_effect/metal1.mp3
 
 
 enemyfire:
