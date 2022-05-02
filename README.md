@@ -12,4 +12,5 @@ enemy scene can be created by a GUI without any code! Multiple customizable prop
 The fighter upgrade system will appear in subsequent versions！
 # Installation
 This program relies on pygame, PIL and numpy.
+
 `pip install -r requirements.txt`
