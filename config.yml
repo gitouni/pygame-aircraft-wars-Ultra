@@ -1,0 +1,34 @@
+setting:
+  sim_interval: 10  # (ms)
+  screen_size: [480,600]
+  status_bar_size: [480,30]
+  gamescreen_size: [480,570]
+  background_color: [0,0,0]
+  bg_rollv: 18
+player:
+  missile:
+    img: missile_png/missile0.png
+    explode_sound_file: bomb_fire.wav
+  mp3_path: Sound_effect
+  bullet_sound_file: fighter_bullet_fire.mp3
+  missile_sound_file: fighter_missile_fire.mp3
+  explode_sound_file: fighter_explode.mp3
+  hit_sound_file: metal1.mp3
+
+
+bullet:
+  path: bullet_png
+  setting: data/bullet_info.csv
+
+enemy:
+  path: enemy_png
+  setting: data/enemy_info.csv
+  explode_mp3: Sound_effect/small_explode.wav
+
+
+enemyfire:
+  path: enemyfire_png
+  setting: data/enemyfire_info.csv
+
+enemy_path:
+  path: path_josn
