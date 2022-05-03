@@ -7,7 +7,7 @@ import json
 import os
 
 class Path_Planner():
-    def __init__(self,painter_size=(310,400),rectangle=(50,30,270,360),save='path_json'):
+    def __init__(self,painter_size=(310,400),rectangle=(50,30,270,360),save='cycle_path'):
         self.root = tk.Tk()
         self.F1 = tk.Frame(self.root)
         self.F2 = tk.Frame(self.root)
