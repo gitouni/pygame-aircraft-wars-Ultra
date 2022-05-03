@@ -197,9 +197,19 @@ def event_check(fighter):
 # 场景检查函数
 def scene_check(init_time,now):
     now = pygame.time.get_ticks()
-    for i in range(len(scene_list)):
-        if not scene_list[i].need_to_end and now - init_time > scene_time[i]*1000:
-            scene_list[i].update()
+    remove_id = []
+    for i,scene in enumerate(scene_list):
+        if not scene.need_to_end:
+            if now - init_time > scene_time[i]*1000:
+                scene.update()
+        else:
+            remove_id.append(i)
+    if remove_id:
+        remove_id.reverse()  # 倒序删除，不影响数组其他元素顺序
+        for index in remove_id:
+            del scene_list[index]  # delete scene and free memory
+            del scene_time[index]
+
 
 
 def create_scene():

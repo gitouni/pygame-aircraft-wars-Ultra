@@ -25,6 +25,7 @@ enemy:
   setting: data/enemy_info.csv
   explode_sound_file: Sound_effect/small_explode.wav
   hurt_sound_file: Sound_effect/metal1.mp3
+  diamond_sound_file: Sound_effect/diamond.wav
 
 
 enemyfire:
@@ -32,6 +33,7 @@ enemyfire:
   setting: data/enemyfire_info.csv
   type_a_sound_file: Sound_effect/laser_big_oneshot.mp3
   type_b_sound_file: Sound_effect/launch1.wav
+  explode_sound_file: Sound_effect/bomb_fire.wav
 enemy_path:
   path: path_josn
 

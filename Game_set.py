@@ -11,8 +11,8 @@ class game_set():
         self.gold = 0
         self.diamond = 0        
         # 战机数据
-        self.player_HP_level = 3
-        self.player_HP_recover = 3
+        self.player_HP_level = 5
+        self.player_HP_recover = 5
         self.player_energy_level = 3
         self.player_energy_recover_level = 3
         self.player_cooling_level = 3

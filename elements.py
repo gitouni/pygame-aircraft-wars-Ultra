@@ -351,10 +351,13 @@ class missile(pygame.sprite.Sprite):
         
 # 敌军火力类
 class enemy_fire(pygame.sprite.Sprite):
-    def __init__(self,screen,location,speed,ID,speed_dir,scale=1):
+    def __init__(self,screen:pygame.Surface,hook_background_group:pygame.sprite.Group,location,speed,ID,speed_dir,scale=1):
         pygame.sprite.Sprite.__init__(self)  # 类继承
         self.screen = screen
+        self.hook_background_group = hook_background_group
         self.ID = ID
+        self.explode_music = CONFIG['enemyfire']['explode_sound_file']
+        self.explode_size = (30,30)
         if self.ID in enemyfire_type_a:
             sound = pygame.mixer.Sound(CONFIG['enemyfire']['type_a_sound_file'])
             threading.Thread(target=utils.play_music,args=(sound,0.3)).start()
@@ -384,6 +387,9 @@ class enemy_fire(pygame.sprite.Sprite):
         if utils.transgress_detect(self.rect): # 子弹越界删除
             self.kill()    
     def dead(self):
+        if self.ID in enemyfire_type_b:
+            self.hook_background_group.add(explode(self.screen,self.rect.center,self.explode_size))
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.explode_music),)).start()
         self.kill()
         
 class enemy(pygame.sprite.Sprite):
@@ -407,6 +413,7 @@ class enemy(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.init_image,self.agl)  # 加载图形，并缩小像素
         self.sound = pygame.mixer.Sound(CONFIG['enemy']['explode_sound_file'])
         self.hurt_sound = pygame.mixer.Sound(CONFIG['enemy']['hurt_sound_file'])
+        self.diamond_sound_file = CONFIG['enemy']['diamond_sound_file']
         self.gold = int(enemy_dict['gold'][self.ID])
         self.diamond = float(enemy_dict['diamond'][self.ID])
         self.score = int(enemy_dict['score'][self.ID])
@@ -441,22 +448,22 @@ class enemy(pygame.sprite.Sprite):
         """默认射击-向目标点pos射击"""
         self.update_bullet_pos()
         bullet_dir = (target_pos[0]-self.rect.centerx,target_pos[1]-self.rect.centery)
-        blt = enemy_fire(self.screen,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
+        blt = enemy_fire(self.screen,self.hook_background_group,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt)
     def foward_shoot(self):
         self.update_bullet_pos()
         bullet_dir = (-sin(self.agl*pi/180.0),-cos(self.agl*pi/180.0))
-        blt = enemy_fire(self.screen,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
+        blt = enemy_fire(self.screen,self.hook_background_group,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt)
     def default_shoot(self,bullet_offset=[0,0]):
         self.update_bullet_pos()
-        bullet_dir = (0,-1)
+        bullet_dir = (0,1)
         bullet_pos = utils.tuple_add(self.bullet_pos,bullet_offset)
-        blt = enemy_fire(self.screen,bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
+        blt = enemy_fire(self.screen,self.hook_background_group,bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt)
     def shoot(self,bullet_pos,bullet_dir,bullet_speed):
         self.update_bullet_pos()
-        blt = enemy_fire(self.screen,bullet_pos,bullet_speed,self.bullet_ID,bullet_dir,0.5)
+        blt = enemy_fire(self.screen,self.hook_background_group,bullet_pos,bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt) # 将发射的子弹归为敌军活力群
     def update(self):
         self.speed = utils.speed_tran(self.speed_value,self.speed_dir) # 速度属性
@@ -500,6 +507,7 @@ class enemy(pygame.sprite.Sprite):
         prob_level = 0
         if diamond_prob < self.diamond:
             prob_level = 5 - np.digitize(diamond_prob,np.linspace(0,self.diamond,5))
+            threading.Thread(target=utils.thread_play_music,args=(self.diamond_sound_file,1.0,0.8)).start()
         self.hook_global_info.update(self.hook_global_info.gold + self.gold, self.hook_global_info.diamond+prob_level, self.hook_global_info.score + self.score)
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长
         explode0 = explode(self.screen,self.rect.center,(explode_r,explode_r))
