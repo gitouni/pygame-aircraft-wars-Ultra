@@ -18,7 +18,7 @@ from Scene_set import scenes
 from elements import fighter
 import yaml
 import utils
-from scene import scene1
+from scene import scene1,scene2
 from utils import Info
 
 
@@ -382,7 +382,7 @@ if __name__ == "__main__":
     bg_rollv = CONFIG['setting']['bg_rollv']  # rolling speed
     scene_time = []
     scene_list = list()
-    scene_class = dict(scene1=scene1)
+    scene_class = dict(scene1=scene1,scene2=scene2)
     init_time = pygame.time.get_ticks()
     player.game_set(gameset) # 使用该游戏设置
     pygame.mixer.init(11025)

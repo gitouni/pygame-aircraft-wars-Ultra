@@ -398,6 +398,7 @@ class enemy(pygame.sprite.Sprite):
         self.hook_background_group = hook_background_group
         self.ID = enemy_names.index(ID) # 敌机型号
         self.speed_dir = speed_dir # 运动方向属性
+        self.speed_value = speed
         self.speed = utils.speed_tran(speed,self.speed_dir) # 速度属性
         self.move_dxy = [0,0]
         self.agl = -180/pi*atan2(self.speed_dir[0],-self.speed_dir[1])
@@ -442,16 +443,23 @@ class enemy(pygame.sprite.Sprite):
         bullet_dir = (target_pos[0]-self.rect.centerx,target_pos[1]-self.rect.centery)
         blt = enemy_fire(self.screen,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt)
-    def default_shoot(self):
+    def foward_shoot(self):
         self.update_bullet_pos()
         bullet_dir = (-sin(self.agl*pi/180.0),-cos(self.agl*pi/180.0))
         blt = enemy_fire(self.screen,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
+        self.hook_enemyfire_group.add(blt)
+    def default_shoot(self,bullet_offset=[0,0]):
+        self.update_bullet_pos()
+        bullet_dir = (0,-1)
+        bullet_pos = utils.tuple_add(self.bullet_pos,bullet_offset)
+        blt = enemy_fire(self.screen,bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt)
     def shoot(self,bullet_pos,bullet_dir,bullet_speed):
         self.update_bullet_pos()
         blt = enemy_fire(self.screen,bullet_pos,bullet_speed,self.bullet_ID,bullet_dir,0.5)
         self.hook_enemyfire_group.add(blt) # 将发射的子弹归为敌军活力群
     def update(self):
+        self.speed = utils.speed_tran(self.speed_value,self.speed_dir) # 速度属性
         self.move_dxy[0] += self.speed[0]
         self.move_dxy[1] += self.speed[1]
         intmove_dxy = int(self.move_dxy[0]), int(self.move_dxy[1])
@@ -467,13 +475,15 @@ class enemy(pygame.sprite.Sprite):
         self.blitme()
     def update_time(self):# 更新敌机时间
         self.time = pygame.time.get_ticks()
-    def rotate(self,speed_dir):
+    def rotate(self,speed_dir,rotate_img=True):
+        self.speed_dir = speed_dir
         self.agl = -180/pi*atan2(speed_dir[0],-speed_dir[1])
-        self.image = pygame.transform.rotate(pygame.image.load(self.img_ad),self.agl)
-        self.mask = pygame.mask.from_surface(self.image)
-        self.pos = self.rect.center
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos
+        if rotate_img:
+            self.image = pygame.transform.rotate(pygame.image.load(self.img_ad),self.agl)
+            self.mask = pygame.mask.from_surface(self.image)
+            self.pos = self.rect.center
+            self.rect = self.image.get_rect()
+            self.rect.center = self.pos
     def move_to(self,P):
         self.rect.center = P
         self.blitme()

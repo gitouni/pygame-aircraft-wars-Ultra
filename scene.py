@@ -1,14 +1,16 @@
 import os
-from collections import Iterable
 import pygame
 import pygame.sprite
 import pygame.image
 import pygame.transform
 import pygame.time
 from elements import enemy, fighter
+from collections.abc import Iterable
 import utils
 from utils import path_cal,PointList_tran,transgress_xy
 import yaml
+import json
+import random
 
 
 with open("config.yml",'r')as f:
@@ -21,12 +23,12 @@ with open("config.yml",'r')as f:
 
 # 警告标志
 class warn_mark(pygame.sprite.Sprite):
-    def __init__(self,myscreen,pos):
+    def __init__(self,myscreen,pos,type=0):
         pygame.sprite.Sprite.__init__(self)
         self.screen = myscreen
         self.size = (20,20)
         self.pos = pos
-        self.image_ad = os.path.join(ICON_CONFIG['path'],ICON_CONFIG['warn'])
+        self.image_ad = os.path.join(ICON_CONFIG['path'],ICON_CONFIG['warn'][type])
         self.image = pygame.transform.scale(pygame.image.load(self.image_ad),self.size)
         self.rect = self.image.get_rect()
         self.rect.topleft = pos # 摆放位置
@@ -54,6 +56,29 @@ class warn_mark(pygame.sprite.Sprite):
         if self.i > 5:
             self.kill()
 
+def duplicate_path(path:list, iter:int):
+    Path = []
+    for _ in range(iter):
+        Path.extend(path)
+    return Path
+
+class Random_Scene_Generator:
+    def __init__(self,path_dir:str,random_permute=True,random_flip=True,level=0):
+        self.path_dir = path_dir
+        self.files = [file for file in os.listdir(self.path_dir) if os.path.splitext(file)[1] == '.json']
+        self.full_paths = [os.path.join(path_dir,file) for file in self.full_paths]
+        self.random_permute = random_permute
+        self.random_flip = random_flip
+        self.level = level
+    def get_path(self,index):
+        with open(self.full_paths[index],'r')as f:
+            path_list = json.load(f)
+        assert isinstance(path_list,list), "invalid path data!"
+        if self.random_permute and random.random() < 0.5:
+            path_list.reverse()
+        if self.random_flip and random.random() < 0.5:
+            for i in range(len(path_list)):
+                path_list[i][0] = 1 - path_list[i][0]
 
 # 场景函数
 """场景1:
@@ -63,7 +88,7 @@ class warn_mark(pygame.sprite.Sprite):
 运动速度大小恒为speed, 两架敌机的出现间隔为dt
 """
 class scene1():
-    def __init__(self,myscreen,t0,enemy_num,enemy_ID,bullet_speed,bullet_ID,speed,PointList,dt,bullet_target,
+    def __init__(self,myscreen:pygame.Surface,t0,enemy_num,enemy_ID,bullet_speed,bullet_ID,speed,PointList,dt,bullet_target,
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
                  hook_background_group:pygame.sprite.Group,init_time:int):
@@ -79,7 +104,7 @@ class scene1():
         self.hook_background_group = hook_background_group
         self.dt = dt # 两架敌机的出现间隔（秒）
         self.isshooted = [0]*enemy_num # 记录下敌机是否已经开火 
-        self.path,self.point,self.speed_dir = path_cal(PointList,speed)
+        self.path,self.pt_index,self.speed_dir = path_cal(PointList,speed)
         self.need_to_end = False
         self.started = False
         self.init_time = init_time   
@@ -112,7 +137,7 @@ class scene1():
             self.scene_init()
             rect0 = pygame.Rect(0,0,20,20)
             rect0.topleft = self.PointList[0]
-            warning0 = warn_mark(self.screen,transgress_xy(rect0))
+            warning0 = warn_mark(self.screen,transgress_xy(rect0),type=0)
             self.hook_background_group.add(warning0)
             self.update_time()
         # 判断场景中的敌人是否该移动/删除
@@ -129,7 +154,7 @@ class scene1():
             assert isinstance(enemy0,enemy), "Class must be enemy!"
             if enemy0.need_to_move and not enemy0.need_to_remove:
                 enemy0.data[0] += 1
-                if enemy0.data[0] > self.point[enemy0.data[1]]:
+                if enemy0.data[0] > self.pt_index[enemy0.data[1]]:
                     enemy0.data[1] += 1
                     enemy0.rotate(self.speed_dir[enemy0.data[1]])
                 enemy0.move_to(self.path[enemy0.data[0]])
@@ -138,6 +163,8 @@ class scene1():
                         if self.bullet_target == [1,1]:  # shoot at player
                             enemy0.orientated_shoot((self.hook_player.rect.centerx,self.hook_player.rect.centery))
                         elif self.bullet_target == [0,0]:  # shoot at speed direction
+                            enemy0.foward_shoot()
+                        elif self.bullet_target == [0,-1]:  # shoot at down direction
                             enemy0.default_shoot()
                         else:  # shoot at target position
                             target_position = (GAME_SCREEN[0]*self.bullet_target[0],GAME_SCREEN[1]*self.bullet_target[1])
@@ -178,5 +205,157 @@ class scene1():
                        hook_player=hook_player,
                        hook_background_group=hook_background_group,
                        init_time=init_time)
+        scene_list.append(scene)
+        scene_time.append(cls_info['scene_time'])
+        
+
+# 场景函数
+
+# 场景函数
+"""场景2:
+在指定屏幕上生成1个型号为ID的敌机, 每架敌机会从屏幕上边缘飞到path的初始点, 循环围绕path飞行并发射子弹,
+直到到达最大循环次数或死亡。子弹类型为bullet_ID,发射速度为bullet_speed,发射频率为1/bullet_cd,发射方向为bullet_target
+bullet_target ([0,0]为向下发射子弹，[1,1]为向玩家方向发射子弹)
+型号为bullet_ID的子弹。敌机循环运动轨迹（最多N次）依次经过PointList=[(x1,y1),(x2,y2),...,(xn,yn)]个点，
+运动速度大小恒为speed, 到达和离开循环路径的速度为init_speed, 两架敌机的出现间隔为dt
+"""
+class scene2():
+    def __init__(self,myscreen:pygame.Surface,enemy_ID,PointList,speed,init_speed,max_iter,
+                 bullet_speed,bullet_ID,bullet_target,bullet_cd,bullet_break_cnt,bullet_break,
+                 hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
+                 hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
+                 hook_background_group:pygame.sprite.Group,init_time:int=0,wait_time:float=0.5):
+        self.screen = myscreen
+        self.enemy_ID = enemy_ID
+        self.PointList = PointList
+        start_PointList = [(PointList[0][0],-0.2*GAME_SCREEN[1]),PointList[0]]
+        end_PointList = [PointList[-1],(PointList[-1][0],1.2*GAME_SCREEN[1])]
+        self.enemy = None
+        self.hook_global_info = hook_global_info
+        self.hook_player = hook_player
+        self.hook_enemy_group = hook_enemy_group
+        self.hook_enemyfire_group = hook_enemyfire_group
+        self.hook_background_group = hook_background_group
+        self.path, self.pt_index, self.speed_dir = path_cal(start_PointList,init_speed)
+        self.shoot_start_index = self.pt_index[-1]
+        end_path, end_pt_index, end_speed_dir = path_cal(end_PointList,init_speed)
+        path,pt_index,speed_dir = path_cal(duplicate_path(PointList,max_iter),speed)
+        pt_index = [index+self.pt_index[-1] for index in pt_index]
+        self.path.extend(path)
+        self.pt_index.extend(pt_index)
+        self.speed_dir.extend(speed_dir)
+        self.shoot_end_index = self.pt_index[-1]
+        end_pt_index = [index+self.pt_index[-1] for index in end_pt_index]
+        self.path.extend(end_path)
+        self.pt_index.extend(end_pt_index)
+        self.speed_dir.extend(end_speed_dir)
+        self.speed = speed
+        self.init_speed = init_speed
+        self.need_to_end = False
+        self.started = False
+        self.init_time = init_time   
+        self.wait_time = wait_time
+        self.bullet_speed = bullet_speed
+        self.bullet_ID = bullet_ID
+        self.bullet_target = bullet_target
+        self.bullet_cd = bullet_cd
+        self.bullet_break_cnt = bullet_break_cnt
+        self.bullet_break = bullet_break
+        self.bullet_cnt = 0
+        
+    def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
+        self.enemy = enemy(self.screen,self.enemy_ID,self.PointList[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
+                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group)
+        self.enemy.data = [0,0,len(self.path),0] 
+        '''
+        data[0]:敌机目前处在的最小（直线）分段点
+        data[1]:敌机目前处于的关键点（用于确定速度分量）
+        data[2]:敌机总共需要经过的最小分段点
+        data[3]:敌机的序号, 防止kill()方法打乱顺序
+        '''
+        self.enemy.rotate(self.speed_dir[self.enemy.data[1]],rotate_img=True)
+        self.enemy.speed_value = self.init_speed
+        self.hook_enemy_group.add(self.enemy) # 总敌机群加入该敌机
+        # 第一个点是敌机出现的初始位置
+    def update_time(self):
+        self.init_time = pygame.time.get_ticks()
+    def update(self):
+        # 第一次进入时更新该类时间
+        if self.started == False:
+            self.started = True
+            self.scene_init()
+            rect0 = pygame.Rect(0,0,20,20)
+            rect0.topleft = (self.PointList[0][0],-0.2)
+            self.hook_background_group.add(warn_mark(self.screen,transgress_xy(rect0),type=1))
+            self.update_time()
+        self.enemy.update_time()
+        # 判断场景中的敌人是否该移动/删除
+        if not self.enemy.need_to_remove:
+            if self.enemy.time - self.init_time >= self.wait_time*1000:
+                self.enemy.need_to_move = True
+            if self.enemy.data[0] >= self.enemy.data[2] - 1:
+                self.enemy.need_to_remove = True
+        # 对场景中的敌人进行移动
+        if self.enemy.need_to_move and not self.enemy.need_to_remove:
+            self.enemy.data[0] += 1
+            if self.enemy.data[0] > self.pt_index[self.enemy.data[1]]:
+                self.enemy.data[1] += 1
+                self.enemy.rotate(self.speed_dir[self.enemy.data[1]],rotate_img=False)
+            self.enemy.move_to(self.path[self.enemy.data[0]])
+            if self.shoot_start_index <= self.enemy.data[0] <= self.shoot_end_index: # 位于循环轨迹才发射子弹
+                self.enemy.speed_value = self.speed
+                if self.bullet_cnt < self.bullet_break_cnt:
+                    if self.enemy.time-self.init_time > self.bullet_cd*1000:
+                        if self.bullet_target == [1,1]:  # shoot at player
+                            self.enemy.orientated_shoot((self.hook_player.rect.centerx,self.hook_player.rect.centery))
+                        elif self.bullet_target == [0,0]:  # shoot at speed direction
+                            self.enemy.foward_shoot()
+                        elif self.bullet_target == [0,-1]:  # shoot at down direction
+                            self.enemy.default_shoot()
+                        else:  # shoot at target position
+                            target_position = (GAME_SCREEN[0]*self.bullet_target[0],GAME_SCREEN[1]*self.bullet_target[1])
+                            self.enemy.orientated_shoot(target_position)
+                        self.enemy.shooted = True
+                        self.update_time()
+                        self.bullet_cnt += 1
+                else:
+                    if self.enemy.time-self.init_time > self.bullet_break*1000:
+                        self.bullet_cnt = 0
+                        self.update_time()
+            else:
+                self.enemy.speed_value = self.init_speed
+        # 所有敌人都需删除，场景删除所有敌人并不再更新
+        self.need_to_end = self.enemy.need_to_remove or (not self.enemy.alive())
+        if self.need_to_end:
+            self.end()
+    def end(self):
+        self.enemy.kill()
+    @staticmethod
+    def create(cls_info:dict,scene_list:list,scene_time:list,background:pygame.Surface,
+               hook_player:fighter,hook_global_info:utils.Info,
+               hook_enemy_group:pygame.sprite.Group,
+               hook_enemyfire_group:pygame.sprite.Group,
+               hook_background_group:pygame.sprite.Group,
+               init_time=pygame.time.get_ticks()):
+        assert cls_info['type'] == 'scene2', "types of scene_info and scene dont't fit"
+        scene = scene2(myscreen=background,
+                       enemy_ID=cls_info['enemy_id'],
+                       PointList=PointList_tran(cls_info['point_list']),
+                       speed=cls_info['enemy_speed'],
+                       init_speed=cls_info['enemy_init_speed'],
+                       max_iter=cls_info['max_iter'],
+                       bullet_speed=cls_info['bullet_speed'],
+                       bullet_ID=cls_info['enemy_fire_id'],
+                       bullet_target=cls_info['bullet_target'],
+                       bullet_cd=cls_info['bullet_cd'],
+                       bullet_break=cls_info['bullet_break'],
+                       bullet_break_cnt=cls_info['bullet_break_cnt'],
+                       hook_global_info=hook_global_info,
+                       hook_enemy_group=hook_enemy_group,
+                       hook_enemyfire_group=hook_enemyfire_group,
+                       hook_player=hook_player,
+                       hook_background_group=hook_background_group,
+                       init_time=init_time,
+                       wait_time=cls_info['wait_time'])
         scene_list.append(scene)
         scene_time.append(cls_info['scene_time'])

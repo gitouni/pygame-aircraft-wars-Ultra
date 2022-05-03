@@ -1,7 +1,4 @@
-import os
-import json
 from math import sqrt
-import random
 from typing import Iterable
 import pygame
 import pygame.mixer
@@ -27,26 +24,11 @@ class Info:
             self.diamond = diamond
             self.score = score
 
-class Random_Scene_Generator:
-    def __init__(self,path_dir:str,random_permute=True,random_flip=True,level=0):
-        self.path_dir = path_dir
-        self.files = [file for file in os.listdir(self.path_dir) if os.path.splitext(file)[1] == '.json']
-        self.full_paths = [os.path.join(path_dir,file) for file in self.full_paths]
-        self.random_permute = random_permute
-        self.random_flip = random_flip
-        self.level = level
-    def get_path(self,index):
-        with open(self.full_paths[index],'r')as f:
-            path_list = json.load(f)
-        assert isinstance(path_list,list), "invalid path data!"
-        if self.random_permute and random.random() < 0.5:
-            path_list.reverse()
-        if self.random_flip and random.random() < 0.5:
-            for i in range(len(path_list)):
-                path_list[i][0] = 1 - path_list[i][0]
 # 元组差           
 def tuple_minus(a,b):           
     return tuple([ax-bx for ax,bx in zip(a,b)])
+def tuple_add(a,b):        
+    return tuple([ax+bx for ax,bx in zip(a,b)])
 # 向量旋转
 def vector_rotate(v,phi):
     x1 = v[0]
@@ -97,7 +79,19 @@ def transgress_detect(rect:pygame.Rect,gamescreen_size:Iterable=SETTING['gamescr
         return True    
 
 # 计算以恒定速度依次到达一个点数组的时间序列和速度方向
-def path_cal(PointList,speed):
+def path_cal(PointList:list,speed:float):
+    """路径点->轨迹点
+
+    Args:
+        PointList (list): [(x1,y1),(x2,y2),...]
+        speed (float): speed of track
+
+    Returns:
+        (P,Q,V): 
+            P: list of resample points [(xa1,ya1),(xa2,ya2),...]\n
+            Q: indice of initial points of PointList in P
+            V: list of speed (v1,v2) with respect to P
+    """
     n = len(PointList)
     D = [0]*(n-1) # 距离数组
     V = [0]*(n-1)

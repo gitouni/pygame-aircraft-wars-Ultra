@@ -30,8 +30,8 @@ enemy:
 enemyfire:
   path: enemyfire_png/
   setting: data/enemyfire_info.csv
-  launch_sound_file: Sound_effect/laser_big_oneshot.mp3
-
+  type_a_sound_file: Sound_effect/laser_big_oneshot.mp3
+  type_b_sound_file: Sound_effect/launch1.wav
 enemy_path:
   path: path_josn
 
@@ -42,5 +42,5 @@ icon:
   heart: heart.png
   lightning: lightning.png
   snow: snowflake.png
-  warn: warning.png
+  warn: [warn1.png, warn2.png]
   cool: water_drop.png
