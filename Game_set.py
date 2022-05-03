@@ -18,10 +18,10 @@ class game_set():
         self.player_cooling_level = 3
         self.player_cooling_recover_level = 3
         # 子弹数据
-        self.bullet_ID = 5
+        self.bullet_ID = 2
         self.bullet_shooting_cd_level = 4
         self.missile_num_level = 3
-        self.missile_shooting_cd_level = 6
+        self.missile_shooting_cd_level = 4
         self.missile_damage_level = 3
         self.missile_actime_level = 3
         self.missile_speed_max_level = 3
@@ -33,7 +33,7 @@ class game_set():
         self.player_energy_recover_list = [0.03,0.05,0.08,0.12,0.2,0.35,0.45]
         self.player_cooling_list = [10,16,24,36,50,75,120]
         self.player_cooling_recover_list = [0.04,0.07,0.12,0.16,0.2,0.25,0.35]
-        self.player_shooting_cd_list = [350,310,280,250,210,180,150]
+        self.player_shooting_cd_list = [350,300,240,210,165,135,100]
         self.missile_num_list = [1,2,4,6,8]
         self.missile_cd_list = [500,450,400,350,300,250,220]
         self.missile_damage_list = [10,12,15,18,24,27,30]

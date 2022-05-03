@@ -10,6 +10,7 @@ import utils
 from utils import path_cal,PointList_tran,transgress_xy
 import yaml
 
+
 with open("config.yml",'r')as f:
     CONIFG = yaml.load(f,yaml.SafeLoader)
     ICON_CONFIG = CONIFG['icon']

@@ -8,6 +8,7 @@ import pygame.mixer
 import threading
 import time
 import yaml
+import re
 from math import sqrt,cos,sin
 
 with open("config.yml",'r')as f:
@@ -168,3 +169,6 @@ def thread_play_music(filename,volume=None,duration=None):
         sound.stop()
     except pygame.error:
         pass
+    
+def extract_type(filename_list:list,type='a',pattern:str='[_]\w*'):
+    return [index for index in range(len(filename_list)) if type in re.search(pattern,filename_list[index]).group()]

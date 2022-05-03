@@ -117,119 +117,6 @@ class interface():
                             flag = True
                     if not flag:
                         self.reset_state() # 松开按键的位置不在原按键上，复位状态
-
-
-
-# 场景函数
-"""场景2:
-在指定屏幕上生成1个型号为ID的敌机, 每架敌机会从屏幕上边缘飞到path的初始点, 循环围绕path飞行并发射子弹,
-直到到达最大循环次数或死亡。子弹类型为bullet_ID,发射速度为bullet_speed,发射频率为1/bullet_cd,发射方向为bullet_target
-bullet_target ([0,0]为向下发射子弹，[1,1]为向玩家方向发射子弹)
-型号为bullet_ID的子弹。敌机循环运动轨迹依次经过PointList=[(x1,y1),(x2,y2),...,(xn,yn)]个点，
-运动速度大小恒为speed, 到达和离开循环路径的速度为init_speed, 两架敌机的出现间隔为dt
-# """
-# class scene2():
-#     def __init__(self,myscreen,t0,enemy_num,enemy_ID,bullet_speed,bullet_ID,speed,PointList,dt,bullet_target):
-#         self.screen = myscreen
-#         self.N = enemy_num # 场景初始敌机数
-#         self.t0 =t0
-#         self.PointList = PointList
-#         self.enemy_group = pygame.sprite.Group() # 敌机群
-#         self.dt = dt # 两架敌机的出现间隔（秒）
-#         self.isshooted = [0]*enemy_num # 记录下敌机是否已经开火 
-#         self.path,self.point,self.speed_dir = path_cal(PointList,speed)
-#         self.need_to_end = False
-#         self.started = False
-#         self.init_time = pygame.time.get_ticks()        
-#         self.bullet_speed = bullet_speed
-#         self.bullet_ID = bullet_ID
-#         self.bullet_target = bullet_target
-#         self.speed = speed
-#         self.enemy_ID = enemy_ID
-#     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
-#         for i in range(self.N):
-#             enemy0 = enemy(self.screen,self.enemy_ID,self.PointList[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID)
-#             enemy0.data = [0,0,len(self.path),i] 
-#             '''
-#             data[0]:敌机目前处在的最小分段点
-#             data[1]:敌机目前处于的关键点（用于确定速度分量）
-#             data[2]:敌机总共需要经过的最小分段点
-#             data[3]:敌机的序号，防止kill()方法打乱顺序
-#             '''
-#             enemy0.rotate(self.speed_dir[enemy0.data[1]])
-#             self.enemy_group.add(enemy0) # 场景中加入该敌机
-#             enemy_Group.add(enemy0) # 总敌机群加入该敌机
-#             # 第一个点是敌机出现的初始位置
-#     def update_time(self):
-#         self.init_time = pygame.time.get_ticks()
-#     def update(self):
-#         # 第一次进入时更新该类时间
-#         if self.started == False:
-#             self.started = True
-#             self.scene_init()
-#             rect0 = pygame.Rect(0,0,20,20)
-#             rect0.topleft = self.PointList[0]
-#             warning0 = warn_mark(self.screen,transgress_xy(rect0))
-#             background_Group.add(warning0)
-#             self.update_time()
-#         # 判断场景中的敌人是否该移动/删除
-#         for enemy0 in self.enemy_group.sprites():
-#             assert isinstance(enemy0,enemy), "Class must be enemy!"
-#             if not enemy0.need_to_remove:
-#                 enemy0.update_time()
-#                 if enemy0.time - self.init_time > (enemy0.data[3]+1)*self.dt*1000:
-#                     enemy0.need_to_move = True
-#                 if enemy0.data[0] >= enemy0.data[2] - 1:
-#                     enemy0.need_to_remove = True
-#         # 对场景中的敌人进行移动
-#         for enemy0 in self.enemy_group.sprites():
-#             assert isinstance(enemy0,enemy), "Class must be enemy!"
-#             if enemy0.need_to_move and not enemy0.need_to_remove:
-#                 enemy0.data[0] += 1
-#                 if enemy0.data[0] > self.point[enemy0.data[1]]:
-#                     enemy0.data[1] += 1
-#                     enemy0.rotate(self.speed_dir[enemy0.data[1]])
-#                 enemy0.move_to(self.path[enemy0.data[0]])
-#                 if self.t0: # 当t0=0或None时不发射子弹
-#                     if enemy0.time-self.init_time>self.t0*1000+(enemy0.data[3]+1)*self.dt*1000 and not enemy0.shooted:
-#                         if self.bullet_target == [1,1]:  # shoot at player
-#                             enemy0.orientated_shoot((player.rect.centerx,player.rect.centery))
-#                         elif self.bullet_target == [0,0]:  # shoot at speed direction
-#                             enemy0.default_shoot()
-#                         else:  # shoot at target position
-#                             target_position = (gamescreen_size[0]*self.bullet_target[0],gamescreen_size[1]*self.bullet_target[1])
-#                             enemy0.orientated_shoot(target_position)
-#                         enemy0.shooted = True
-#         # 所有敌人都需删除，场景删除所有敌人并不再更新
-#         flag = True
-#         for enemy0 in self.enemy_group.sprites():
-#             assert isinstance(enemy0,enemy), "Class must be enemy!"
-#             flag = flag and enemy0.need_to_remove
-#         self.need_to_end = flag
-#         if self.need_to_end:
-#             self.end()
-#     def end(self):
-#         for sprite in self.enemy_group.sprites():
-#             sprite.kill()
-#     @staticmethod
-#     def create(cls_info):
-#         assert isinstance(cls_info,dict), "scene info must be dict"
-#         assert cls_info['type'] == 'scene1', "types of scene_info and scene dont't fit"
-#         scene = scene1(myscreen=background,
-#                        t0=cls_info['bullet_time'],
-#                        enemy_num=cls_info['enemy_num'],
-#                        enemy_ID=cls_info['enemy_id'],
-#                        bullet_speed=cls_info['bullet_speed'],
-#                        bullet_target=cls_info['bullet_target'],
-#                        bullet_ID=cls_info['enemy_fire_id'],
-#                        speed=cls_info['enemy_speed'],
-#                        PointList=utils.PointList_tran(cls_info['point_list'],screen_size),
-#                        dt=cls_info['dt'])
-#         scene_list.append(scene)
-#         scene_time.append(cls_info['scene_time'])
-
-
-            
    
             
 
@@ -318,7 +205,11 @@ def scene_check(init_time,now):
 def create_scene():
     for scene_info in scenes:
         scene_class[scene_info['type']].create(scene_info,scene_list,scene_time,background,
-                                               player,Global_info,enemy_Group,enemyfire_Group,background_Group,init_time)
+                                               hook_player=player,hook_global_info=Global_info,
+                                               hook_enemy_group=enemy_Group,
+                                               hook_enemyfire_group=enemyfire_Group,
+                                               hook_background_group=background_Group,
+                                               init_time=init_time)
 # 更新系统时间
 def system_update_time():
     global init_time

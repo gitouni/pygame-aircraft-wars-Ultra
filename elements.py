@@ -8,7 +8,6 @@ import pygame.font
 import pygame.mask
 import pygame.display
 import os
-import re
 import yaml
 import numpy as np
 from numpy import clip
@@ -33,8 +32,11 @@ enemy_dict = utils.csv2dict(CONFIG['enemy']['setting'])
 enemyfire_dict = utils.csv2dict(CONFIG['enemyfire']['setting'])
 bullet_dict = utils.csv2dict(CONFIG['bullet']['setting'])
 enemy_names = [os.path.splitext(name)[0] for name in enemy_dict['filename']]
-special_enemyfire_id = [enemyfire_id for enemyfire_id in range(len(enemyfire_dict['filename'])) if 'a' in re.search('[_]\w*',enemyfire_dict['filename'][enemyfire_id]).group()]
-# 定义玩家
+enemyfire_type_a = utils.extract_type(enemyfire_dict['filename'],type='a')
+enemyfire_type_b = utils.extract_type(enemyfire_dict['filename'],type='b')
+# 类型提取
+
+
 class fighter(pygame.sprite.Sprite):
     def __init__(self,hook_background:pygame.Surface,hook_gamescreen:pygame.Surface,hook_enemy_group:pygame.sprite.Group,
                  hook_bullet_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group):
@@ -293,17 +295,12 @@ class missile(pygame.sprite.Sprite):
         # 寻找目标
         target_list = list()
         for enemy0 in self.hook_enemy_group.sprites():
+            assert isinstance(enemy0,enemy),'Target type must be enemy'
             if enemy0.targeted == False and not utils.transgress_detect(enemy0.rect):
                 target_list.append(enemy0)
                 # 加入可攻击组和序号
         if target_list:
             self.target = target_list[randint(0,len(target_list)-1)]
-        elif not self.hook_enemy_group.empty():# 若暂时未有待锁定目标且敌机组不为空
-            target_list = [unit for unit in self.hook_enemy_group.sprites() if not utils.transgress_detect(unit.rect)]
-            if target_list:
-                self.target = target_list[randint(0,len(target_list)-1)]
-            else:
-                self.target = None
         else:
             self.target = None
     def rotate(self):
@@ -313,8 +310,11 @@ class missile(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
     def track_target(self):
         # 追踪目标
-        if self.target in self.hook_enemy_group.sprites():# 若目标仍在敌机组，追击
-            self.speed_dir = utils.tuple_minus(self.target.rect.center,self.rect.center)
+        if self.target is not None:
+            if self.target.alive():# 若目标仍在敌机组，追击
+                self.speed_dir = utils.tuple_minus(self.target.rect.center,self.rect.center)
+            else:
+                self.target = None
         else:
             self.speed_dir = utils.vector_rotate(self.speed_dir,pi/180.0*self.speed)# 自转
             self.target = None # 清除锁定
@@ -332,8 +332,9 @@ class missile(pygame.sprite.Sprite):
         self.move_dxy[1] -= intmove_dxy[1]
         self.blitme()
     def dead(self):
-        if(self.target):
-            self.target.targeted = False # 解除敌机锁定
+        if self.target is not None:
+            if self.target.alive():
+                self.target.targeted = False # 解除敌机锁定
         self.hook_background_group.add(explode(self.screen,self.rect.center,self.explode_size))
         threading.Thread(target=utils.play_music,args=(self.explode_music,)).start()
         self.kill()
@@ -354,8 +355,11 @@ class enemy_fire(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)  # 类继承
         self.screen = screen
         self.ID = ID
-        if self.ID in special_enemyfire_id:
-            sound = pygame.mixer.Sound(CONFIG['enemyfire']['launch_sound_file'])
+        if self.ID in enemyfire_type_a:
+            sound = pygame.mixer.Sound(CONFIG['enemyfire']['type_a_sound_file'])
+            threading.Thread(target=utils.play_music,args=(sound,0.3)).start()
+        elif self.ID in enemyfire_type_b:
+            sound = pygame.mixer.Sound(CONFIG['enemyfire']['type_b_sound_file'])
             threading.Thread(target=utils.play_music,args=(sound,0.3)).start()
         self.speed_dir = speed_dir
         self.speed = utils.speed_tran(speed,speed_dir)
