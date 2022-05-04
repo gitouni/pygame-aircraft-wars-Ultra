@@ -4,6 +4,7 @@ import time
 import re
 import pygame
 # extend import
+import pygame.event
 import pygame.draw
 import pygame.mixer
 import pygame.sprite
@@ -129,7 +130,7 @@ def center_text(out_rect,text_rect):
 
 
 
-def collide_detect():
+def collide_detect(player:fighter):
     myfire_collide = pygame.sprite.groupcollide(enemy_Group,bullet_Group,False,False)
     for unit in myfire_collide.keys():
         hit_bullets = myfire_collide[unit] # 与敌机碰撞的子弹列表
@@ -154,7 +155,7 @@ def collide_detect():
 
 
 # 事件检查函数
-def event_check(fighter):
+def event_check(player:fighter):
     global running
     for event in pygame.event.get():
         if event.type == pygame.QUIT:  # 检测到按退出键，实施软退出
@@ -163,36 +164,36 @@ def event_check(fighter):
         if player.alive_: # 玩家阵亡时不再响应控制按键
             if event.type == pygame.KEYDOWN:  # 检测到有键按下时动作，相反的两个动作不能冲突抵消
                 if event.key == pygame.K_RIGHT:
-                    fighter.moving_right = True
-                    fighter.moving_left = False
+                    player.moving_right = True
+                    player.moving_left = False
                 elif event.key == pygame.K_LEFT:
-                    fighter.moving_left = True
-                    fighter.moving_right = False
+                    player.moving_left = True
+                    player.moving_right = False
                 if event.key == pygame.K_UP:
-                    fighter.moving_up = True
-                    fighter.movng_down = False
+                    player.moving_up = True
+                    player.movng_down = False
                 elif event.key == pygame.K_DOWN:
-                    fighter.moving_down = True
-                    fighter.moving_up = False
+                    player.moving_down = True
+                    player.moving_up = False
                 if event.key == pygame.K_f:
-                    fighter.shooting = not fighter.shooting
+                    player.shooting = not player.shooting
                 if event.key == pygame.K_w:
-                    fighter.shoot1, fighter.shoot2, fighter.shoot3 = True,True,False
+                    player.shoot1, player.shoot2, player.shoot3 = True,True,False
                 if event.key == pygame.K_q:
-                    fighter.shoot1, fighter.shoot2, fighter.shoot3 = True,False,False
+                    player.shoot1, player.shoot2, player.shoot3 = True,False,False
                 if event.key == pygame.K_e:
-                    fighter.shoot1, fighter.shoot2, fighter.shoot3 = True,True,True
+                    player.shoot1, player.shoot2, player.shoot3 = True,True,True
                 if event.key == pygame.K_SPACE:
-                    fighter.launching = True
+                    player.launching = True
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RIGHT:
-                    fighter.moving_right = False
+                    player.moving_right = False
                 elif event.key == pygame.K_LEFT:
-                    fighter.moving_left = False
+                    player.moving_left = False
                 if event.key == pygame.K_UP:
-                    fighter.moving_up = False
+                    player.moving_up = False
                 elif event.key == pygame.K_DOWN:
-                    fighter.moving_down = False
+                    player.moving_down = False
 
 # 场景检查函数
 def scene_check(init_time,now):
@@ -212,7 +213,7 @@ def scene_check(init_time,now):
 
 
 
-def create_scene():
+def create_scene(player:fighter):
     for scene_info in scenes:
         scene_class[scene_info['type']].create(scene_info,scene_list,scene_time,background,
                                                hook_player=player,hook_global_info=Global_info,
@@ -226,7 +227,7 @@ def system_update_time():
     init_time = pygame.time.get_ticks()
 # 绘制飞船状态栏
 
-def draw_statebar():
+def draw_statebar(player:fighter):
     # 分隔线
     pygame.draw.rect(screen,(0,0,0),pygame.Rect((0,0),statebar_size))
     pygame.draw.line(screen,(0,255,0),(0,statebar_size[1]-1),\
@@ -313,9 +314,11 @@ def run_game(backcolor,interval):
         pygame.display.flip()
     
     #开始游戏
+    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group)
+    player.game_set(gameset) # 使用该游戏设置
     player.blitme()
     pygame.display.flip()
-    create_scene()
+    create_scene(player)
     now = pygame.time.get_ticks()
     system_update_time()
     while running:
@@ -327,7 +330,7 @@ def run_game(backcolor,interval):
             blit_ad = int((now-init_time)/1000*bg_rollv % bg_resize[1])
             background.blit(background_img,(0,blit_ad-bg_resize[1]+30))
             background.blit(background_img,(0,blit_ad+30))
-            collide_detect()            
+            collide_detect(player)            
             bullet_Group.update()
             if player.alive_:
                 player.update()    
@@ -335,7 +338,7 @@ def run_game(backcolor,interval):
             enemyfire_Group.update()
             background_Group.update()
             screen.blit(background,(0,30))
-            draw_statebar() # 更新状态栏
+            draw_statebar(player) # 更新状态栏
             pygame.display.flip()  # 更新画面
     gameset.gold = int(Global_info.gold)
     gameset.diamond = int(Global_info.diamond)
@@ -384,7 +387,7 @@ if __name__ == "__main__":
     enemy_Group = pygame.sprite.Group() # 敌机群
     enemyfire_Group = pygame.sprite.Group() # 敌军的子弹群
     background_Group = pygame.sprite.Group() # 背景动画群
-    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group)
+    
     background_img = pygame.image.load(os.path.join("background_jpg","img_bg_1.jpg"))  # 背景图片
     bg_size = background_img.get_size()
     bg_resize = (screen_size[0],int(screen_size[0]/bg_size[0]*bg_size[1]))
@@ -394,7 +397,7 @@ if __name__ == "__main__":
     scene_list = list()
     scene_class = dict(scene1=scene1,scene2=scene2)
     init_time = pygame.time.get_ticks()
-    player.game_set(gameset) # 使用该游戏设置
+    
     pygame.mixer.init(11025)
     pygame.mixer.music.set_volume(8)
     run_main_interface() # 运行主界面

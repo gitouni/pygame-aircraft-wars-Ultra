@@ -24,6 +24,7 @@ enemy:
   path: enemy_png/
   setting: data/enemy_info.csv
   explode_sound_file: Sound_effect/small_explode.wav
+  big_explode_sound_file: Sound_effect/fighter_explode.mp3
   hurt_sound_file: Sound_effect/metal1.mp3
   diamond_sound_file: Sound_effect/diamond.wav
 

@@ -32,6 +32,7 @@ enemy_dict = utils.csv2dict(CONFIG['enemy']['setting'])
 enemyfire_dict = utils.csv2dict(CONFIG['enemyfire']['setting'])
 bullet_dict = utils.csv2dict(CONFIG['bullet']['setting'])
 enemy_names = [os.path.splitext(name)[0] for name in enemy_dict['filename']]
+enemy_type_b = utils.extract_type(enemy_dict['filename'],pattern='\w*[.]',type='b')
 enemyfire_type_a = utils.extract_type(enemyfire_dict['filename'],type='a')
 enemyfire_type_b = utils.extract_type(enemyfire_dict['filename'],type='b')
 # 类型提取
@@ -411,8 +412,10 @@ class enemy(pygame.sprite.Sprite):
         self.img_ad = os.path.join(enemy_path,enemy_dict['filename'][self.ID])
         self.init_image = pygame.image.load(self.img_ad)
         self.image = pygame.transform.rotate(self.init_image,self.agl)  # 加载图形，并缩小像素
-        self.sound = pygame.mixer.Sound(CONFIG['enemy']['explode_sound_file'])
-        self.hurt_sound = pygame.mixer.Sound(CONFIG['enemy']['hurt_sound_file'])
+        self.explode_sound_file = CONFIG['enemy']['explode_sound_file']\
+            if self.ID not in enemy_type_b else CONFIG['enemy']['big_explode_sound_file']
+        self.explode_sound = pygame.mixer.Sound(self.explode_sound_file)
+        self.hurt_sound_file = CONFIG['enemy']['hurt_sound_file']
         self.diamond_sound_file = CONFIG['enemy']['diamond_sound_file']
         self.gold = int(enemy_dict['gold'][self.ID])
         self.diamond = float(enemy_dict['diamond'][self.ID])
@@ -500,7 +503,7 @@ class enemy(pygame.sprite.Sprite):
             self.dead()
             self.HP = 0
         else:
-            threading.Thread(target=utils.play_music,args=(self.hurt_sound,)).start()
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.hurt_sound_file),)).start()
     def dead(self):
         self.kill()
         diamond_prob = np.random.rand()
@@ -512,7 +515,7 @@ class enemy(pygame.sprite.Sprite):
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长
         explode0 = explode(self.screen,self.rect.center,(explode_r,explode_r))
         self.hook_background_group.add(explode0) 
-        threading.Thread(target=utils.play_music,args=(self.sound,)).start()
+        threading.Thread(target=utils.play_music,args=(self.explode_sound,)).start()
         
 
 # 爆炸动画精灵

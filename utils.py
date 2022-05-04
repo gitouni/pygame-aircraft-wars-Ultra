@@ -164,5 +164,5 @@ def thread_play_music(filename,volume=None,duration=None):
     except pygame.error:
         pass
     
-def extract_type(filename_list:list,type='a',pattern:str='[_]\w*'):
-    return [index for index in range(len(filename_list)) if type in re.search(pattern,filename_list[index]).group()]
+def extract_type(filename_list:list,type='a',pattern:str='[_]\w*[.]'):
+    return [index for index in range(len(filename_list)) if re.search(pattern,filename_list[index]) and type in re.search(pattern,filename_list[index]).group()]
