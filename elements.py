@@ -46,7 +46,7 @@ class fighter(pygame.sprite.Sprite):
         self.hook_gamescreen = hook_gamescreen
         self.hook_bullet_group = hook_bullet_group
         self.hook_background_group = hook_background_group
-        self.speed = 6
+        self.speed = 6 * sim_interval/10.0
         self.rol = 0 # 横向倾斜角
         self.agl = 0
         self.img_ad = 'player_png/p{0}.png'.format(self.agl)
@@ -87,11 +87,11 @@ class fighter(pygame.sprite.Sprite):
         self.HP = self.HP_max # 现有生命值
         self.energy_max = 20 # 最大能量
         self.energy = self.energy_max
-        self.energy_recover = 0.05
+        self.energy_recover = 0
         self.cooling_max = 10 # 最大冷却能力
         self.cooling = self.cooling_max-(self.init_shooting_cd/self.shooting_cd)*\
                       (self.shoot1+self.shoot2+self.shoot3)*5*self.shooting # 现有能量
-        self.cooling_recover = 0.02
+        self.cooling_recover = 0
         # 以上为游戏信息参数
         self.alive_ = True
         self.shooting_time = pygame.time.get_ticks()
@@ -106,10 +106,10 @@ class fighter(pygame.sprite.Sprite):
         self.HP_max = self.HP
         self.HP_recover =  gameset.player_HP_recover_list[gameset.player_HP_recover]
         self.energy = gameset.player_energy_list[gameset.player_energy_level]
-        self.energy_recover = gameset.player_energy_recover_list[gameset.player_energy_recover_level]
+        self.energy_recover = gameset.player_energy_recover_list[gameset.player_energy_recover_level] * sim_interval/10.0
         self.energy_max = self.energy
         self.cooling = gameset.player_cooling_list[gameset.player_cooling_level]
-        self.cooling_recover = gameset.player_cooling_recover_list[gameset.player_cooling_recover_level]
+        self.cooling_recover = gameset.player_cooling_recover_list[gameset.player_cooling_recover_level] * sim_interval/10.0
         self.cooling_max = self.cooling
         self.bullet_ID = gameset.bullet_ID
         self.shooting_cd = gameset.player_shooting_cd_list[gameset.bullet_shooting_cd_level]
@@ -241,7 +241,8 @@ class bullet(pygame.sprite.Sprite):
         self.rect = self.image.get_rect() 
         self.rect.centerx,self.rect.centery = location
         self.speed_dir = speed_dir
-        self.speed = utils.speed_tran(speed,speed_dir)
+        self.speed_value = speed * sim_interval/10.0
+        self.speed = utils.speed_tran(self.speed_value,speed_dir)
         self.damage = float(bullet_dict['damage'][self.ID]) # 子弹伤害数值
     def blitme(self):
         self.screen.blit(self.image,self.rect)
@@ -263,8 +264,8 @@ class missile(pygame.sprite.Sprite):
         self.hook_background_group = hook_background_group
         self.size = (20,40)
         self.init_speed = 1
-        self.speed = 1
-        self.speed_max = max_speed
+        self.speed = 1 * sim_interval/10.0
+        self.speed_max = max_speed * sim_interval/10.0
         self.speed_dir = speed_dir
         self.ac_time = ac_time*1000 # 加速时间（毫秒）
         self.speed_vector = utils.speed_tran(self.speed,self.speed_dir)
@@ -365,7 +366,8 @@ class enemy_fire(pygame.sprite.Sprite):
             sound = pygame.mixer.Sound(CONFIG['enemyfire']['type_b_sound_file'])
             threading.Thread(target=utils.play_music,args=(sound,0.3)).start()
         self.speed_dir = speed_dir
-        self.speed = utils.speed_tran(speed,speed_dir)
+        self.speed_value = speed * sim_interval/10.0
+        self.speed = utils.speed_tran(self.speed_value,speed_dir)
         self.move_dxy = [0,0]
         self.img_ad = os.path.join(enemyfire_path,enemyfire_dict['filename'][ID])
         self.image = pygame.transform.rotate(pygame.image.load(self.img_ad),-180/pi*atan2(speed_dir[0],-speed_dir[1]))

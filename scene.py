@@ -14,10 +14,10 @@ import random
 
 with open("config.yml",'r')as f:
     CONIFG = yaml.load(f,yaml.SafeLoader)
-    ICON_CONFIG = CONIFG['icon']
-    GAME_SCREEN = CONIFG['setting']['gamescreen_size']
+ICON_CONFIG = CONIFG['icon']
+GAME_SCREEN = CONIFG['setting']['gamescreen_size']
 
-
+sim_interval = CONIFG['setting']['sim_interval']
 
 # 警告标志
 class warn_mark(pygame.sprite.Sprite):
@@ -90,6 +90,7 @@ class scene1():
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
                  hook_background_group:pygame.sprite.Group,init_time:int):
+        speed *= sim_interval/10.0
         self.screen = myscreen
         self.N = enemy_num # 场景初始敌机数
         self.t0 =t0
@@ -223,6 +224,8 @@ class scene2():
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
                  hook_background_group:pygame.sprite.Group,init_time:int=0,wait_time:float=0.5):
+        init_speed = init_speed * sim_interval/10.0
+        speed = speed * sim_interval/10.0
         self.screen = myscreen
         self.enemy_ID = enemy_ID
         start_PointList = [(PointList[0][0],-0.05*GAME_SCREEN[1]),PointList[0]]
