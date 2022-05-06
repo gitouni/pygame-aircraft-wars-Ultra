@@ -9,8 +9,7 @@ import pygame.mask
 import pygame.display
 import os
 import yaml
-import numpy as np
-from numpy import clip
+from numpy import clip,digitize,linspace,random
 from random import randint
 from math import sqrt,pi,cos,sin,atan2
 import utils
@@ -503,13 +502,13 @@ class enemy(pygame.sprite.Sprite):
             self.dead()
             self.HP = 0
         else:
-            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.hurt_sound_file),)).start()
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.hurt_sound_file),0.4)).start()
     def dead(self):
         self.kill()
-        diamond_prob = np.random.rand()
+        diamond_prob = random.rand()
         prob_level = 0
         if diamond_prob < self.diamond:
-            prob_level = 5 - np.digitize(diamond_prob,np.linspace(0,self.diamond,5))
+            prob_level = 5 - digitize(diamond_prob,linspace(0,self.diamond,5))
             threading.Thread(target=utils.thread_play_music,args=(self.diamond_sound_file,1.0,0.8)).start()
         self.hook_global_info.update(self.hook_global_info.gold + self.gold, self.hook_global_info.diamond+prob_level, self.hook_global_info.score + self.score)
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长

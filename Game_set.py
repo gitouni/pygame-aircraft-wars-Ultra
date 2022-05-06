@@ -12,20 +12,20 @@ class game_set():
         self.diamond = 0        
         # 战机数据
         self.player_HP_level = 5
-        self.player_HP_recover = 5
-        self.player_energy_level = 5
-        self.player_energy_recover_level = 6
-        self.player_cooling_level = 5
-        self.player_cooling_recover_level = 6
+        self.player_HP_recover = 3
+        self.player_energy_level = 3
+        self.player_energy_recover_level = 2
+        self.player_cooling_level = 3
+        self.player_cooling_recover_level = 2
         # 子弹数据
-        self.bullet_ID = 0
-        self.bullet_shooting_cd_level = 6
-        self.missile_num_level = 4
-        self.missile_shooting_cd_level = 6
-        self.missile_damage_level = 3
+        self.bullet_ID = 1
+        self.bullet_shooting_cd_level = 5
+        self.missile_num_level = 3
+        self.missile_shooting_cd_level = 4
+        self.missile_damage_level = 1
         self.missile_actime_level = 3
-        self.missile_speed_max_level = 3
-        self.missile_flyingtime_level = 3
+        self.missile_speed_max_level = 4
+        self.missile_flyingtime_level = 4
         # 参数列表
         self.player_HP_list = [5,6.5,7.5,10,15,20,30]
         self.player_HP_recover_list = [0.0005,0.001,0.002,0.005,0.01,0.025,0.1]
@@ -33,7 +33,7 @@ class game_set():
         self.player_energy_recover_list = [0.03,0.05,0.1,0.18,0.32,0.48,0.65]
         self.player_cooling_list = [10,16,24,36,50,75,120]
         self.player_cooling_recover_list = [0.04,0.07,0.14,0.24,0.36,0.5,0.68]
-        self.player_shooting_cd_list = [400,333,285,200,166,83,66]
+        self.player_shooting_cd_list = [400,333,285,200,166,100,66]
         self.missile_num_list = [1,2,4,6,8]
         self.missile_cd_list = [500,450,400,350,300,250,220]
         self.missile_damage_list = [10,12,15,18,24,27,30]

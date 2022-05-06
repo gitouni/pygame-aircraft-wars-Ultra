@@ -69,7 +69,7 @@ def transgress_xy(rect:pygame.Rect, gamescreen_size:Iterable=SETTING['gamescreen
         y = Y-h
     return (x,y)
 
-# 越界检测
+# 越界检测, 越界：True 
 def transgress_detect(rect:pygame.Rect,gamescreen_size:Iterable=SETTING['gamescreen_size']):
     X = gamescreen_size[0]
     Y = gamescreen_size[1]

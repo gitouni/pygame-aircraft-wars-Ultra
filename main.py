@@ -13,138 +13,43 @@ import pygame.transform
 import pygame.image
 import pygame.font
 import pygame.display
-
+# game import
+import json
 from Game_set import game_set
-from Scene_set import scenes
 from elements import fighter
 import yaml
 import utils
 from scene import scene1,scene2
 from utils import Info
+# interface import
+import tkinter as tk
+from PIL import Image,ImageTk
+from copy import deepcopy
+import threading
 
 
-
-class button():
-    def __init__(self,myscreen,ID,text,function_ID):
-        self.screen = myscreen
-        self.state = 'up'
-        self.ID = ID
-        self.function_ID = function_ID
-        self.text = text
-        self.image_ad = 'button_png/button{0}_{1}.png'.format(self.ID,self.state)
-        self.image = pygame.image.load(self.image_ad)
-        self.rect = self.image.get_rect()
-        font0 = pygame.font.SysFont('kaiti',20)
-        self.txt_img = font0.render(text,1,(0,0,0))
-        self.txt_rect =self.txt_img.get_rect()
-    def blitme(self):
-        # 先放矩形后放字体
-        self.screen.blit(self.image,self.rect)
-        self.screen.blit(self.txt_img,center_text(self.rect,self.txt_rect))
-    def tran_state(self,state):
-        self.state = state
-        self.image_ad = 'button_png/button{0}_{1}.png'.format(self.ID,self.state)
-        self.image = pygame.image.load(self.image_ad)
-        
-# 定义开始界面
-class interface():
-    def __init__(self,myscreen:pygame.Surface,button_dict:dict,png_dict:dict,bg_img):
-        self.screen = myscreen
-        self.button_dict = button_dict
-        self.png_dict = png_dict
-        self.bg_img = bg_img
-        self.time = pygame.time.get_ticks()
-        self.function_ID = 0
-        '''
-        0:维持主界面
-        1:运行游戏
-        2:改造中心
-        -1:退出游戏
-        '''
-        self.respond = False # 是否正在响应为假时才响应事件
-        self.responded = False
-    def reset_state(self): # 复位响应状态到原始状态
-        self.respond = False
-        self.responded = False
-    def update_time(self):
-        self.time = pygame.time.get_ticks()
-    def update(self):
-        self.screen.blit(self.bg_img,(0,0))
-        for button in self.button_dict.keys():
-            button.rect.center = self.button_dict[button]
-            button.blitme()
-        for png in self.png_dict.keys():
-            png_rect = png.get_rect()
-            png_rect.center = self.png_dict[png]
-            self.screen.blit(png,png_rect)
-        pygame.display.update()
-    def mouse_check(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                gameset.gold = int(Global_info.gold)
-                gameset.diamond = int(Global_info.diamond)
-                gameset.high_score = max(gameset.high_score,Global_info.score)
-                gameset.save()
-                pygame.font.quit()
-                pygame.quit()
-                self.function_ID = -1
-            elif event.type == pygame.MOUSEMOTION:
-                m_pos = pygame.mouse.get_pos()
-                flag = False
-                for button in self.button_dict.keys():
-                    if button.rect.collidepoint(m_pos):
-                        button.tran_state('select')
-                        flag = True
-                        self.function_ID = button.ID
-                    else:
-                        button.tran_state('up')
-                if not flag:
-                    self.function_ID = 0
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                m_pos = pygame.mouse.get_pos()
-                for button in self.button_dict.keys():
-                    if button.rect.collidepoint(m_pos):
-                        button.tran_state('down')
-                        self.respond = True  # 按钮正在接受响应
-                        self.function_ID = button.ID
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if self.respond: # 当按下按键在有效位置时再响应松开按键
-                    m_pos = pygame.mouse.get_pos()
-                    flag = False
-                    for button in self.button_dict.keys():
-                        if button.rect.collidepoint(m_pos) and self.function_ID == button.function_ID:
-                            button.tran_state('up')
-                            self.responded = True
-                            flag = True
-                    if not flag:
-                        self.reset_state() # 松开按键的位置不在原按键上，复位状态
-   
-            
-
-def center_text(out_rect,text_rect):
-    x1 = out_rect.left
-    y1 = out_rect.top
-    dwidth = 1/2*(out_rect.width-text_rect.width)
-    dheight = 1/2*(out_rect.height-text_rect.height)
-    return (x1+dwidth,y1+dheight) 
-
-
+def clear_sprite(group:pygame.sprite.Group):
+    for sprite in group.sprites():
+        sprite.kill()
 
 def collide_detect(player:fighter):
     myfire_collide = pygame.sprite.groupcollide(enemy_Group,bullet_Group,False,False)
     for unit in myfire_collide.keys():
+        if utils.transgress_detect(unit.rect):
+            continue
         hit_bullets = myfire_collide[unit] # 与敌机碰撞的子弹列表
         for blt in hit_bullets:
             collide_xy = pygame.sprite.collide_mask(unit,blt)
-            if collide_xy and not utils.transgress_detect(unit.rect):
+            if collide_xy:
                 unit.hurt(blt.damage) # 对敌机造成子弹的伤害
                 blt.dead()  # 组中删除子弹
     if player.alive_:
         enemy_collide = pygame.sprite.spritecollideany(player,enemy_Group)
         if enemy_collide:
-            if pygame.sprite.collide_mask(player,enemy_collide):            
-                enemy_collide.hurt(player.HP) # 敌军受到玩家撞击伤害
-                player.hurt(enemy_collide.collide_damage) # 玩家受到敌军撞击伤害
+            if not utils.transgress_detect(enemy_collide.rect):
+                if pygame.sprite.collide_mask(player,enemy_collide):            
+                    enemy_collide.hurt(player.HP) # 敌军受到玩家撞击伤害
+                    player.hurt(enemy_collide.collide_damage) # 玩家受到敌军撞击伤害
         enemyfire_collide = pygame.sprite.spritecollideany(player,enemyfire_Group)
         if enemyfire_collide:
             if pygame.sprite.collide_mask(player,enemyfire_collide):
@@ -196,8 +101,7 @@ def event_check(player:fighter):
                     player.moving_down = False
 
 # 场景检查函数
-def scene_check(init_time,now):
-    now = pygame.time.get_ticks()
+def scene_check(now):
     remove_id = []
     for i,scene in enumerate(scene_list):
         if not scene.need_to_end:
@@ -213,7 +117,7 @@ def scene_check(init_time,now):
 
 
 
-def create_scene(player:fighter):
+def create_scene(player:fighter,background:pygame.Surface):
     for scene_info in scenes:
         scene_class[scene_info['type']].create(scene_info,scene_list,scene_time,background,
                                                hook_player=player,hook_global_info=Global_info,
@@ -227,7 +131,7 @@ def system_update_time():
     init_time = pygame.time.get_ticks()
 # 绘制飞船状态栏
 
-def draw_statebar(player:fighter):
+def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int):
     # 分隔线
     pygame.draw.rect(screen,(0,0,0),pygame.Rect((0,0),statebar_size))
     pygame.draw.line(screen,(0,255,0),(0,statebar_size[1]-1),\
@@ -269,44 +173,114 @@ def draw_statebar(player:fighter):
     gold_font = pygame.font.SysFont('arial', 15, bold=True)
     diamond_font = pygame.font.SysFont('arial', 15, bold=True)
     score_font = pygame.font.SysFont('arial', 15, bold=True,italic=True)
+    time_font = pygame.font.SysFont('arial',15,bold=True)
     gold_font_surface = gold_font.render(f":{Global_info.gold}",True,[255,255,255])
     diamond_font_surface = diamond_font.render(f":{Global_info.diamond}",True,[255,255,255])
-    score_font_surface = score_font.render(f"Score:{Global_info.score}",True,[180,255,255])
+    score_font_surface = score_font.render(f"{Global_info.score}",True,[180,255,255])
+    time_font_surface = time_font.render("{:.2f}s".format((pygame.time.get_ticks()-init_time)/1000.0),True,[255,100,100])
     screen.blit(gold_font_surface,GOLD_POS)
     screen.blit(diamond_font_surface,DIAMOND_POS)
     screen.blit(score_font_surface,SCORE_POS)
+    screen.blit(time_font_surface,TIME_POS)
     
+def run_main():
+    SIGN_POS = (10,190)
+    BUTTON1_POS = (60,40)
+    BUTTON2_POS = (60,120)
+    BUTTON_SIZE = (100,30)
+    root = tk.Tk()
+    root.title('Aircraft-War-Ultra')
+    win_width, win_height = CONFIG['interface']['screen_size']
+    root.geometry('{:d}x{:d}'.format(win_width,win_height))
+    canvas = tk.Canvas(root,height=win_height, width=win_width,
+        bd=0, highlightthickness=0)
+    img = Image.open(CONFIG['interface']['background_img'])
+    photo = ImageTk.PhotoImage(img)
+    canvas.create_image(0,0,anchor='nw',image=photo)
+    canvas.pack()
+    sign_tx = canvas.create_text(*SIGN_POS,font=('arial',14,'bold'),anchor='nw',fill="white")
+    canvas.insert(sign_tx,1,'Made by gitouni')
+    button1 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=lambda a=screen_bg_color,b=sim_interval: run_game(a,b)
+                        ,background='yellow')
+    button2 = tk.Button(root,text='改造中心',font=('heiti',14,'bold'),command=run_lab,background='#8823BA')
+    button1.pack()
+    button2.pack()
+    canvas.create_window(*BUTTON1_POS,width=BUTTON_SIZE[0],height=BUTTON_SIZE[1],window=button1)
+    canvas.create_window(*BUTTON2_POS,width=BUTTON_SIZE[0],height=BUTTON_SIZE[1],window=button2)
+    root.mainloop()
+
+def run_lab():
+    global gameset
+    gameset_copy = deepcopy(gameset)
+    def refresh():
+        nonlocal gameset_copy
+        gameset_copy.__dict__ = gameset.__dict__
+        threading.Thread(target=utils.thread_play_music,args=(config['refresh_sound_file'],1,1.0)).start()
+        flash()
+    def flash():
+        gold_textvar.set(str(gameset_copy.gold))
+        diamond_textvar.set(str(gameset_copy.diamond))
+    def error():
+        threading.Thread(target=utils.thread_play_music,args=(config['error_sound_file'],1,1.0)).start()
+
+    gold_textvar = tk.StringVar(value=str(gameset_copy.gold))
+    diamond_textvar = tk.StringVar(value=str(gameset_copy.diamond))
+    if not pygame.get_init():
+        pygame.init()  # 初始化背景设置
+        pygame.font.init() # 初始化字体设置
+        pygame.mixer.init(11025)  # 音乐初始化
+        pygame.mixer.music.set_volume(8)  # 音量初始化
+    config = CONFIG['interface']
+    icon_config = CONFIG['icon']
+    root = tk.Toplevel()
+    root.title('Laboratory')
+    win_width, win_height = config['lab_screen_size']
+    root.geometry('{:d}x{:d}'.format(win_width,win_height))
+    img = Image.open(config['lab_img'])
+    img = img.resize((win_width, win_height),Image.BICUBIC)
+    photo = ImageTk.PhotoImage(img)
+    canvas = tk.Canvas(root,height=win_height, width=win_width,
+        bd=0, highlightthickness=0)
+    canvas.create_image(0,0,anchor='nw',image=photo)
+    canvas.pack()
+    gold_ico = Image.open(os.path.join(icon_config['path'],icon_config['gold'])).resize((25,25),Image.BICUBIC)
+    gold_ico = ImageTk.PhotoImage(gold_ico)
+    diamond_ico = Image.open(os.path.join(icon_config['path'],icon_config['diamond'])).resize((30,25),Image.BICUBIC)
+    diamond_ico = ImageTk.PhotoImage(diamond_ico)
+    refresh_ico = Image.open(os.path.join(icon_config['path'],icon_config['refresh'])).resize((25,25),Image.BICUBIC)
+    refresh_ico = ImageTk.PhotoImage(refresh_ico)
+    upgrade_ico = Image.open(os.path.join(icon_config['path'],icon_config['upgrade'])).resize((25,25),Image.BICUBIC)
+    upgrade_ico = ImageTk.PhotoImage(upgrade_ico)
     
-# 运行开始界面
-def run_main_interface():
-    run_delta = 100  # ms
-    bg_img = pygame.image.load('background_jpg/b3.jpg')
-    button1 = button(screen,1,'无限模式',1)
-    button2 = button(screen,1,'改造中心',2)
-    png1 = pygame.image.load('button_png/fighter_png.png')
-    button_pos = utils.PointList_tran([(0.3,0.7),(0.7,0.7)],screen_size)
-    png_pos = utils.PointList_tran([(0.7,0.4)],screen_size)
-    button_dict = {button1:button_pos[0],button2:button_pos[1]}
-    png_dict = {png1:png_pos[0]}
-    main_interface = interface(screen,button_dict,png_dict,bg_img) 
-    now_ID = main_interface.function_ID
-    main_interface.update()
-    while main_interface.function_ID != -1:
-        try:
-            main_interface.mouse_check() # 响应鼠标事件并更新function_ID
-            now_ID = main_interface.function_ID
-            if pygame.time.get_ticks() - main_interface.time > run_delta:
-                main_interface.update_time()
-                main_interface.update()
-            if main_interface.respond and main_interface.responded:
-                main_interface.reset_state()
-                if now_ID == 1:
-                    run_game(screen_bg_color,sim_interval)
-        except pygame.error:
-            print('pygmae exit!')
-            break
+    canvas.create_image(*config['lab_grid']['gold_icon'],anchor='nw',image=gold_ico)
+    canvas.create_image(*config['lab_grid']['diamond_icon'],anchor='nw',image=diamond_ico)
+    gold_label = tk.Label(root,textvariable=gold_textvar,fg='yellow',font=('arial',12),background='#338877')
+    diamond_label = tk.Label(root,textvariable=diamond_textvar,fg='yellow',font=('arial',12),background='#338877')
+    gold_label.pack()
+    diamond_label.pack()
+    
+    canvas.create_window(*config['lab_grid']['gold_value'],anchor='nw',width=60,height=20,window=gold_label)
+    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=60,height=20,window=diamond_label)
+    refresh_button = tk.Button(root,text='重置',font=('kaiti',12,'bold'),background='#448856',
+                               foreground='yellow',image=refresh_ico,compound='left',
+                               command=refresh)
+    refresh_button.pack()
+    canvas.create_window(*config['lab_grid']['refresh_ico'],width=60,height=25,window=refresh_button)
+    # photo = ImageTk.PhotoImage(img)
+    root.mainloop()
 # 运行游戏界面
 def run_game(backcolor,interval):
+    global running
+    if not pygame.get_init():
+        pygame.init()  # 初始化背景设置
+        pygame.font.init() # 初始化字体设置
+        pygame.mixer.init(11025)  # 音乐初始化
+        pygame.mixer.music.set_volume(8)  # 音量初始化
+    
+    screen = pygame.display.set_mode(screen_size)
+    background = pygame.Surface((gamescreen_size[0]+100,gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
+    pygame.display.set_caption("空中游侠")
+    
     # 渐变显示窗口
     for i in range(11):
         screen.fill(tuple([255*(1-i/10) for _ in backcolor]))
@@ -318,34 +292,45 @@ def run_game(backcolor,interval):
     player.game_set(gameset) # 使用该游戏设置
     player.blitme()
     pygame.display.flip()
-    create_scene(player)
+    create_scene(player,background)
     now = pygame.time.get_ticks()
+    init_time = now
     system_update_time()
+    running = True
     while running:
         # 监视屏幕
         event_check(player)
         # 让最近绘制的屏幕可见
-        if(pygame.time.get_ticks()-now>interval): 
+        if(pygame.time.get_ticks()-now > interval): 
             now = pygame.time.get_ticks()
             blit_ad = int((now-init_time)/1000*bg_rollv % bg_resize[1])
             background.blit(background_img,(0,blit_ad-bg_resize[1]+30))
             background.blit(background_img,(0,blit_ad+30))
+            scene_check(now)
             collide_detect(player)            
             bullet_Group.update()
             if player.alive_:
                 player.update()    
-            scene_check(init_time,now)
             enemyfire_Group.update()
             background_Group.update()
             screen.blit(background,(0,30))
-            draw_statebar(player) # 更新状态栏
+            draw_statebar(screen,player,init_time) # 更新状态栏
             pygame.display.flip()  # 更新画面
     gameset.gold = int(Global_info.gold)
     gameset.diamond = int(Global_info.diamond)
     gameset.high_score = max(gameset.high_score,Global_info.score)
     gameset.save()
+    
     pygame.font.quit()
     pygame.quit()
+    clear_sprite(enemyfire_Group)
+    clear_sprite(enemy_Group)
+    clear_sprite(bullet_Group)
+    clear_sprite(background_Group)
+    scene_list.clear()
+    scene_time.clear()
+
+    
 # 运行改装中心界面
 #def run_lab_interface():
 #    
@@ -353,8 +338,11 @@ def run_game(backcolor,interval):
 if __name__ == "__main__":
     with open("config.yml",'r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
+    
     gameset = game_set() # 游戏设置类
     gameset.load()
+    with open(CONFIG['setting']['scene_path'],'r')as f:
+        scenes = json.load(f)
     GOLD = gameset.gold
     DIAMOND = gameset.diamond
     Global_info = Info(GOLD,DIAMOND)
@@ -376,12 +364,9 @@ if __name__ == "__main__":
     special_enemyfire_id = [enemyfire_id for enemyfire_id in range(len(enemyfire_dict['filename'])) if 'a' in re.search('[_]\w*',enemyfire_dict['filename'][enemyfire_id]).group()]
     GOLD_POS = (210,5)
     DIAMOND_POS = (300,5)
-    SCORE_POS = (350,5)
-    pygame.init()  # 初始化背景设置
-    pygame.font.init() # 初始化字体设置
-    screen = pygame.display.set_mode(screen_size)
-    background = pygame.Surface((gamescreen_size[0]+100,gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
-    pygame.display.set_caption("空中游侠")
+    SCORE_POS = (340,5)
+    TIME_POS = (410,5)
+    
     
     bullet_Group = pygame.sprite.Group() # player的子弹群
     enemy_Group = pygame.sprite.Group() # 敌机群
@@ -397,7 +382,6 @@ if __name__ == "__main__":
     scene_list = list()
     scene_class = dict(scene1=scene1,scene2=scene2)
     init_time = pygame.time.get_ticks()
+    run_main()
     
-    pygame.mixer.init(11025)
-    pygame.mixer.music.set_volume(8)
-    run_main_interface() # 运行主界面
+

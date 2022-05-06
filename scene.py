@@ -5,7 +5,6 @@ import pygame.image
 import pygame.transform
 import pygame.time
 from elements import enemy, fighter
-from collections.abc import Iterable
 import utils
 from utils import path_cal,PointList_tran,transgress_xy
 import yaml
@@ -17,7 +16,6 @@ with open("config.yml",'r')as f:
     CONIFG = yaml.load(f,yaml.SafeLoader)
     ICON_CONFIG = CONIFG['icon']
     GAME_SCREEN = CONIFG['setting']['gamescreen_size']
-
 
 
 
@@ -227,8 +225,7 @@ class scene2():
                  hook_background_group:pygame.sprite.Group,init_time:int=0,wait_time:float=0.5):
         self.screen = myscreen
         self.enemy_ID = enemy_ID
-        self.PointList = PointList
-        start_PointList = [(PointList[0][0],-0.2*GAME_SCREEN[1]),PointList[0]]
+        start_PointList = [(PointList[0][0],-0.05*GAME_SCREEN[1]),PointList[0]]
         end_PointList = [PointList[-1],(PointList[-1][0],1.2*GAME_SCREEN[1])]
         self.enemy = None
         self.hook_global_info = hook_global_info
@@ -264,7 +261,7 @@ class scene2():
         self.bullet_cnt = 0
         
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
-        self.enemy = enemy(self.screen,self.enemy_ID,self.PointList[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
+        self.enemy = enemy(self.screen,self.enemy_ID,self.path[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
                         self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group)
         self.enemy.data = [0,0,len(self.path),0] 
         '''
@@ -274,7 +271,7 @@ class scene2():
         data[3]:敌机的序号, 防止kill()方法打乱顺序
         '''
         self.enemy.rotate(self.speed_dir[self.enemy.data[1]],rotate_img=True)
-        self.enemy.speed_value = self.init_speed
+        self.enemy.speed_value = 0
         self.hook_enemy_group.add(self.enemy) # 总敌机群加入该敌机
         # 第一个点是敌机出现的初始位置
     def update_time(self):
@@ -285,18 +282,20 @@ class scene2():
             self.started = True
             self.scene_init()
             rect0 = pygame.Rect(0,0,20,20)
-            rect0.topleft = (self.PointList[0][0],-0.2)
+            rect0.topleft = (self.path[0][0],-0.2)
             self.hook_background_group.add(warn_mark(self.screen,transgress_xy(rect0),type=1))
             self.update_time()
         self.enemy.update_time()
+        self.need_to_end = self.enemy.need_to_remove or (not self.enemy.alive())
         # 判断场景中的敌人是否该移动/删除
-        if not self.enemy.need_to_remove:
+        if not self.need_to_end:
             if self.enemy.time - self.init_time >= self.wait_time*1000:
                 self.enemy.need_to_move = True
             if self.enemy.data[0] >= self.enemy.data[2] - 1:
                 self.enemy.need_to_remove = True
+
         # 对场景中的敌人进行移动
-        if self.enemy.need_to_move and not self.enemy.need_to_remove:
+        if self.enemy.need_to_move and not self.need_to_end:
             self.enemy.data[0] += 1
             if self.enemy.data[0] > self.pt_index[self.enemy.data[1]]:
                 self.enemy.data[1] += 1
@@ -325,7 +324,6 @@ class scene2():
             else:
                 self.enemy.speed_value = self.init_speed
         # 所有敌人都需删除，场景删除所有敌人并不再更新
-        self.need_to_end = self.enemy.need_to_remove or (not self.enemy.alive())
         if self.need_to_end:
             self.end()
     def end(self):
