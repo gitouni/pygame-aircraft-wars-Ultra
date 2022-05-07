@@ -21,25 +21,52 @@ class game_set():
         self.bullet_ID = 1
         self.bullet_shooting_cd_level = 5
         self.missile_num_level = 3
-        self.missile_shooting_cd_level = 4
+        self.missile_shooting_cd = 100
         self.missile_damage_level = 1
         self.missile_actime_level = 3
-        self.missile_speed_max_level = 4
         self.missile_flyingtime_level = 4
         # 参数列表
-        self.player_HP_list = [5,6.5,7.5,10,15,20,30]
-        self.player_HP_recover_list = [0.0005,0.001,0.002,0.005,0.01,0.025,0.1]
-        self.player_energy_list = [15,30,45,65,90,120,150]
-        self.player_energy_recover_list = [0.03,0.05,0.1,0.18,0.32,0.48,0.65]
-        self.player_cooling_list = [10,16,24,36,50,75,120]
-        self.player_cooling_recover_list = [0.04,0.07,0.14,0.24,0.36,0.5,0.68]
-        self.player_shooting_cd_list = [400,333,285,200,166,100,66]
-        self.missile_num_list = [1,2,4,6,8]
-        self.missile_cd_list = [500,450,400,350,300,250,220]
-        self.missile_damage_list = [10,12,15,18,24,27,30]
-        self.missile_actime_list = [1.0,0.8,0.65,0.6,0.52,0.45,0.3]
-        self.missile_speed_max_list = [4,5,6,7,8,9,10]
-        self.missile_flyingtime_list = [3,3.5,4,4.5,5,6,7]
+        self.player_HP_list = [5,6.5,7.5,10,15,20,30]  # 7 level
+        self.player_HP_recover_list = [0.0005,0.001,0.002,0.005,0.01,0.025,0.05]  # 7 level
+        self.player_energy_list = [15,30,45,65,90,120,150]  # 7 level
+        self.player_energy_recover_list = [0.03,0.05,0.1,0.18,0.32,0.5,0.75]  # 7
+        self.player_cooling_list = [10,16,24,36,50,75,120]  # 7
+        self.player_cooling_recover_list = [0.04,0.07,0.14,0.24,0.36,0.5,0.68]  # 7
+        self.player_shooting_cd_list = [400,333,285,200,166,100,66]  # 7
+        self.missile_num_list = [1,2,4,6,8] # 5
+        self.missile_damage_list = [10,12,15,18,24,27,30]  # 7
+        self.missile_actime_list = [1.0,0.8,0.65,0.6,0.52,0.45,0.3]  # 7
+        self.missile_speed_max_list = [4,5,6,7,8,9,10]  # 7
+        self.missile_flyingtime_list = [3,3.5,4,4.5,5,6,7]  # 7
+        # 消耗列表
+        self.HP_gold = [100,250,500,1500,2500,5000]
+        self.HP_recover_gold = [300,700,1750,3500,7000,20000]
+        self.energy_gold = [200,550,1250,3000,7000,10000]
+        self.energy_recover_gold = [300,800,2000,4000,8000,20000]
+        self.cooling_gold = [150,300,700,1500,5000,15000]
+        self.cooling_recover_gold = [200,600,1500,3000,6000,12500]
+        
+        self.bullet_ID_gold = [400,1000,1500,2000,5000]
+        self.shooting_cd_gold = [200,500,1000,2000,4500,10000]
+        self.missile_num_gold = [300,700,1500,3500]
+        self.missile_damage_gold = [150,250,500,1000,2000,3000]
+        self.missile_actime_gold = [100,250,350,600,1000,1500]
+        self.missile_flyingtime_gold = [150,300,450,800,1250,2000]
+        
+        self.HP_diamond = [0, 0, 0, 50, 100, 250]
+        self.HP_recover_diamond = [0, 0, 0, 100, 250, 500]
+        self.energy_diamond = [0, 0, 0, 50, 100, 350]
+        self.energy_recover_diamond = [0, 0, 0, 100, 300, 600]
+        self.cooling_diamond = [0, 0, 0, 50, 100, 200]
+        self.cooling_recover_diamond = [0, 0, 0, 100, 200, 350]
+        
+        self.bullet_ID_diamond = [0, 0, 0, 50, 150, 400]
+        self.shooting_cd_diamond = [0, 0, 0, 100, 250, 500]
+        self.missile_num_diamond = [0, 0, 25, 50, 100, 150]
+        self.missile_damage_diamond = [0, 0, 25, 50, 100, 200]
+        self.missile_actime_diamond = [0, 0, 0, 50, 75, 125]
+        self.missile_flyingtime_diamond = [0, 0, 0, 50, 75, 125]
+        
     def save(self):
         with open(self.path,'w')as f:
             json.dump(self.__dict__,f)

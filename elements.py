@@ -114,10 +114,10 @@ class fighter(pygame.sprite.Sprite):
         self.bullet_ID = gameset.bullet_ID
         self.shooting_cd = gameset.player_shooting_cd_list[gameset.bullet_shooting_cd_level]
         self.missile_num = gameset.missile_num_list[gameset.missile_num_level]
-        self.launching_cd = gameset.missile_cd_list[gameset.missile_shooting_cd_level]
+        self.launching_cd = gameset.missile_shooting_cd
         self.missile_damge = gameset.missile_damage_list[gameset.missile_damage_level]
         self.missile_actime = gameset.missile_actime_list[gameset.missile_actime_level]
-        self.missile_speed_max = gameset.missile_speed_max_list[gameset.missile_speed_max_level]
+        self.missile_speed_max = gameset.missile_speed_max_list[gameset.missile_actime_level]
     def blitme(self):
         """在指定位置绘制飞船"""
         self.screen.blit(self.image,self.rect)

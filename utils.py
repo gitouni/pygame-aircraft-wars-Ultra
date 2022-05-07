@@ -17,12 +17,14 @@ class Info:
         self.gold = gold
         self.diamond = diamond
         self.score = score
+        self.has_success = False
+        self.has_fail = False
         self.lock = threading.Lock()
-    def update(self,gold,diamond,score):
+    def update(self,gold=None,diamond=None,score=None):
         with self.lock:
-            self.gold = gold
-            self.diamond = diamond
-            self.score = score
+            if gold is not None: self.gold = gold
+            if diamond is not None: self.diamond = diamond
+            if score is not None: self.score = score
 
 # 元组差           
 def tuple_minus(a,b):           

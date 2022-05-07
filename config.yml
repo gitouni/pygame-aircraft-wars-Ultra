@@ -1,17 +1,22 @@
 interface:
   background_img: background_jpg/b2.jpg
   lab_img: background_jpg/lab.png
-  lab_screen_size: [560,360]
+  lab_screen_size: [600,350]
   refresh_sound_file: Sound_effect/refresh.wav
-  upgrade_sound_file: Sound_effect/upgrade.wav
+  upgrade_sound_file: Sound_effect/pay.wav
+  save_sound_file: Sound_effect/ensure.wav
   error_sound_file: Sound_effect/error.wav
+  exit_sound_file: Sound_effect/tip.wav
   screen_size: [165,220]
   lab_grid:
-    gold_icon: [20,45]
-    gold_value: [50,47]
-    diamond_icon: [130,45]
-    diamond_value: [160,47]
-    refresh_ico: [255,26]
+    background_color: "#2C3B35"
+    button_color: "#448856"
+    gold_icon: [15,45]
+    gold_value: [40,47]
+    diamond_icon: [110,45]
+    diamond_value: [130,47]
+    refresh_icon: [265,20]
+    save_icon: [265,45]
 
 setting:
   sim_interval: 10  # (ms)
@@ -21,6 +26,10 @@ setting:
   background_color: [0,0,0]
   bg_rollv: 18
   scene_path: data/scene.json
+  success_sound_file: Sound_effect/mission_accomplished.wav
+  fail_sound_file: Sound_effect/mission_failed.wav
+  fail_font_pos: [120,300]
+  success_font_pos: [70,300]
 
 player:
   missile:
@@ -66,3 +75,4 @@ icon:
   cool: water_drop.png
   upgrade: upgrade.png
   refresh: refresh.png
+  save: save.png

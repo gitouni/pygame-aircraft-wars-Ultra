@@ -23,8 +23,8 @@ from scene import scene1,scene2
 from utils import Info
 # interface import
 import tkinter as tk
+from tkinter import messagebox
 from PIL import Image,ImageTk
-from copy import deepcopy
 import threading
 
 
@@ -118,6 +118,7 @@ def scene_check(now):
 
 
 def create_scene(player:fighter,background:pygame.Surface):
+    max_scene_time = 0
     for scene_info in scenes:
         scene_class[scene_info['type']].create(scene_info,scene_list,scene_time,background,
                                                hook_player=player,hook_global_info=Global_info,
@@ -125,6 +126,8 @@ def create_scene(player:fighter,background:pygame.Surface):
                                                hook_enemyfire_group=enemyfire_Group,
                                                hook_background_group=background_Group,
                                                init_time=init_time)
+        max_scene_time = max(max_scene_time,scene_info['scene_time'])
+    return max_scene_time
 # 更新系统时间
 def system_update_time():
     global init_time
@@ -211,7 +214,8 @@ def run_main():
 
 def run_lab():
     global gameset
-    gameset_copy = deepcopy(gameset)
+    gameset_copy = game_set()
+    gameset_copy.__dict__ = gameset.__dict__
     def refresh():
         nonlocal gameset_copy
         gameset_copy.__dict__ = gameset.__dict__
@@ -222,7 +226,17 @@ def run_lab():
         diamond_textvar.set(str(gameset_copy.diamond))
     def error():
         threading.Thread(target=utils.thread_play_music,args=(config['error_sound_file'],1,1.0)).start()
-
+    def save():
+        gameset.__dict__ = gameset_copy.__dict__
+        threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1,1.0)).start()
+    def on_closing():
+        nonlocal gameset_copy
+        if gameset.__dict__ != gameset_copy.__dict__:
+            threading.Thread(target=utils.thread_play_music,args=(config['exit_sound_file'],1,2.0)).start()
+            if messagebox.askyesno("提示", "未保存，是否退出?"):
+                root.destroy()
+        else:
+            root.destroy()
     gold_textvar = tk.StringVar(value=str(gameset_copy.gold))
     diamond_textvar = tk.StringVar(value=str(gameset_copy.diamond))
     if not pygame.get_init():
@@ -233,7 +247,7 @@ def run_lab():
     config = CONFIG['interface']
     icon_config = CONFIG['icon']
     root = tk.Toplevel()
-    root.title('Laboratory')
+    root.title('实验室')
     win_width, win_height = config['lab_screen_size']
     root.geometry('{:d}x{:d}'.format(win_width,win_height))
     img = Image.open(config['lab_img'])
@@ -247,36 +261,52 @@ def run_lab():
     gold_ico = ImageTk.PhotoImage(gold_ico)
     diamond_ico = Image.open(os.path.join(icon_config['path'],icon_config['diamond'])).resize((30,25),Image.BICUBIC)
     diamond_ico = ImageTk.PhotoImage(diamond_ico)
-    refresh_ico = Image.open(os.path.join(icon_config['path'],icon_config['refresh'])).resize((25,25),Image.BICUBIC)
-    refresh_ico = ImageTk.PhotoImage(refresh_ico)
+    refresh_icon = Image.open(os.path.join(icon_config['path'],icon_config['refresh'])).resize((25,25),Image.BICUBIC)
+    refresh_icon = ImageTk.PhotoImage(refresh_icon)
+    save_icon = Image.open(os.path.join(icon_config['path'],icon_config['save'])).resize((25,25),Image.BICUBIC)
+    save_icon = ImageTk.PhotoImage(save_icon)
     upgrade_ico = Image.open(os.path.join(icon_config['path'],icon_config['upgrade'])).resize((25,25),Image.BICUBIC)
     upgrade_ico = ImageTk.PhotoImage(upgrade_ico)
     
     canvas.create_image(*config['lab_grid']['gold_icon'],anchor='nw',image=gold_ico)
     canvas.create_image(*config['lab_grid']['diamond_icon'],anchor='nw',image=diamond_ico)
-    gold_label = tk.Label(root,textvariable=gold_textvar,fg='yellow',font=('arial',12),background='#338877')
-    diamond_label = tk.Label(root,textvariable=diamond_textvar,fg='yellow',font=('arial',12),background='#338877')
+    gold_label = tk.Label(root,textvariable=gold_textvar,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'])
+    diamond_label = tk.Label(root,textvariable=diamond_textvar,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'])
     gold_label.pack()
     diamond_label.pack()
     
     canvas.create_window(*config['lab_grid']['gold_value'],anchor='nw',width=60,height=20,window=gold_label)
     canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=60,height=20,window=diamond_label)
-    refresh_button = tk.Button(root,text='重置',font=('kaiti',12,'bold'),background='#448856',
-                               foreground='yellow',image=refresh_ico,compound='left',
+    refresh_button = tk.Button(root,text='重置',font=('kaiti',12),background=config['lab_grid']['button_color'],
+                               foreground='yellow',image=refresh_icon,compound='left',
                                command=refresh)
     refresh_button.pack()
-    canvas.create_window(*config['lab_grid']['refresh_ico'],width=60,height=25,window=refresh_button)
-    # photo = ImageTk.PhotoImage(img)
+    save_button = tk.Button(root,text='保存',font=('kaiti',12),background=config['lab_grid']['button_color'],
+                               foreground='yellow',image=save_icon,compound='left',
+                               command=save)
+    save_button.pack()
+    canvas.create_window(*config['lab_grid']['refresh_icon'],width=65,height=25,window=refresh_button)
+    canvas.create_window(*config['lab_grid']['save_icon'],width=65,height=25,window=save_button)
+    root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
 # 运行游戏界面
 def run_game(backcolor,interval):
     global running
+    def failed():
+        utils.play_music(pygame.mixer.Sound(CONFIG['setting']['fail_sound_file']),volume=2.0)
+        
+    def succeeded():
+        utils.play_music(pygame.mixer.Sound(CONFIG['setting']['success_sound_file']),volume=2.0)
+
+            
     if not pygame.get_init():
         pygame.init()  # 初始化背景设置
+    if not pygame.font.get_init():
         pygame.font.init() # 初始化字体设置
+    if not pygame.mixer.get_init():
         pygame.mixer.init(11025)  # 音乐初始化
         pygame.mixer.music.set_volume(8)  # 音量初始化
-    
+    display_font = pygame.font.SysFont('arial', 40, bold=True)
     screen = pygame.display.set_mode(screen_size)
     background = pygame.Surface((gamescreen_size[0]+100,gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
     pygame.display.set_caption("空中游侠")
@@ -292,7 +322,7 @@ def run_game(backcolor,interval):
     player.game_set(gameset) # 使用该游戏设置
     player.blitme()
     pygame.display.flip()
-    create_scene(player,background)
+    max_scene_time = create_scene(player,background)
     now = pygame.time.get_ticks()
     init_time = now
     system_update_time()
@@ -315,12 +345,28 @@ def run_game(backcolor,interval):
             background_Group.update()
             screen.blit(background,(0,30))
             draw_statebar(screen,player,init_time) # 更新状态栏
+            if (not player.alive_):
+                if not Global_info.has_fail:
+                    threading.Thread(target=failed).start()
+                    Global_info.has_fail = True
+                elif (now - init_time) % 1000 > 500:
+                    display_font_surface = display_font.render('Game Over',True,[255,0,0])
+                    screen.blit(display_font_surface,CONFIG['setting']['fail_font_pos'])
+            if now - init_time > max_scene_time*1000 and len(enemy_Group.sprites())==0:
+                if not Global_info.has_success:
+                    threading.Thread(target=succeeded).start()
+                    Global_info.has_success = True
+                elif (now - init_time) % 1000 > 500:
+                    success_font_surface = display_font.render('Mission Accomplished',True,[255,255,255])
+                    screen.blit(success_font_surface,CONFIG['setting']['success_font_pos'])
             pygame.display.flip()  # 更新画面
     gameset.gold = int(Global_info.gold)
     gameset.diamond = int(Global_info.diamond)
     gameset.high_score = max(gameset.high_score,Global_info.score)
+    quit_game()
+
+def quit_game():
     gameset.save()
-    
     pygame.font.quit()
     pygame.quit()
     clear_sprite(enemyfire_Group)
@@ -328,14 +374,13 @@ def run_game(backcolor,interval):
     clear_sprite(bullet_Group)
     clear_sprite(background_Group)
     scene_list.clear()
-    scene_time.clear()
-
-    
+    scene_time.clear()   
 # 运行改装中心界面
 #def run_lab_interface():
 #    
 # 运行游戏
 if __name__ == "__main__":
+
     with open("config.yml",'r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
     
