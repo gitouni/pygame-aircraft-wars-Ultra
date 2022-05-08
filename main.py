@@ -1,4 +1,5 @@
 # coding=utf-8
+from distutils.log import error
 import os
 import time
 import re
@@ -26,6 +27,7 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image,ImageTk
 import threading
+from copy import deepcopy
 
 
 def clear_sprite(group:pygame.sprite.Group):
@@ -187,6 +189,9 @@ def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int):
     screen.blit(time_font_surface,TIME_POS)
     
 def run_main():
+    def quit_main():
+        quit_game()
+        root.destroy()
     SIGN_POS = (10,190)
     BUTTON1_POS = (60,40)
     BUTTON2_POS = (60,120)
@@ -210,12 +215,13 @@ def run_main():
     button2.pack()
     canvas.create_window(*BUTTON1_POS,width=BUTTON_SIZE[0],height=BUTTON_SIZE[1],window=button1)
     canvas.create_window(*BUTTON2_POS,width=BUTTON_SIZE[0],height=BUTTON_SIZE[1],window=button2)
+    root.protocol('WM_DELETE_WINDOW', quit_main)
     root.mainloop()
 
 def run_lab():
     global gameset
     gameset_copy = game_set()
-    gameset_copy.__dict__ = gameset.__dict__
+    gameset_copy.__dict__ = deepcopy(gameset.__dict__)
     gold_consume_keys = ['HP_gold','HP_recover_gold','energy_gold','energy_recover_gold','cooling_gold','cooling_recover_gold',\
                         'bullet_ID_gold','shooting_cd_gold','missile_num_gold','missile_damage_gold','missile_actime_gold','missile_flyingtime_gold']
     diamond_consume_keys = ['HP_diamond','HP_recover_diamond','energy_diamond','energy_recover_diamond','cooling_diamond','cooling_recover_diamond',\
@@ -224,16 +230,48 @@ def run_lab():
             'bullet_ID','bullet_shooting_cd_level','missile_num_level','missile_damage_level','missile_actime_level','missile_flyingtime_level']
     def refresh():
         nonlocal gameset_copy
-        gameset_copy.__dict__ = gameset.__dict__
+        gameset_copy.__dict__ = deepcopy(gameset.__dict__)
         threading.Thread(target=utils.thread_play_music,args=(config['refresh_sound_file'],1,1.0)).start()
         flash()
     def flash():
-        gold_textvar.set(str(gameset_copy.gold))
-        diamond_textvar.set(str(gameset_copy.diamond))
-    def error():
-        threading.Thread(target=utils.thread_play_music,args=(config['error_sound_file'],1,1.0)).start()
+        gold_label.config(text=str(gameset_copy.gold))
+        diamond_label.config(text=gameset_copy.diamond)
+        for index, (consume_gold_label,consume_diamond_label,level_label) in enumerate(zip(gold_label_list,diamond_label_list,level_label_list)):
+            level = gameset_copy.__dict__[level_keys[index]]
+            gold_key = gold_consume_keys[index]
+            diamond_key = diamond_consume_keys[index]
+            if level < len(gameset_copy.__dict__[gold_key]):
+                consume_gold = gameset_copy.__dict__[gold_key][level]
+                consume_diamond = gameset_copy.__dict__[diamond_key][level]
+            else:
+                consume_gold = 'Max Lv'
+                consume_diamond = 'Max Lv'
+            level_label.config(text="{}/{}".format(level+1,len(gameset_copy.__dict__[gold_key])+1))
+            consume_gold_label.config(text=str(consume_gold))
+            consume_diamond_label.config(text=str(consume_diamond))
+    def upgrade(index:int):
+        level = gameset_copy.__dict__[level_keys[index]]
+        gold_key = gold_consume_keys[index]
+        diamond_key = diamond_consume_keys[index]
+        if level < len(gameset_copy.__dict__[gold_key]):
+            consume_gold = gameset_copy.__dict__[gold_key][level]
+            consume_diamond = gameset_copy.__dict__[diamond_key][level]
+            if gameset_copy.gold >= consume_gold and\
+                gameset_copy.diamond >= consume_diamond:
+                level += 1
+                gameset_copy.gold -= consume_gold
+                gameset_copy.diamond -= consume_diamond
+                gameset_copy.__dict__[level_keys[index]] += 1
+                threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(config['upgrade_sound_file']),1)).start()
+                flash()
+            else:
+                upgrade_error()
+        else:
+            upgrade_error()
+    def upgrade_error():
+        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(config['error_sound_file']),1)).start()
     def save():
-        gameset.__dict__ = gameset_copy.__dict__
+        gameset.__dict__ = deepcopy(gameset_copy.__dict__)
         threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1,1.0)).start()
     def print_coord(event:tk.Event):
         print(f"({event.x},{event.y})")
@@ -284,20 +322,17 @@ def run_lab():
     canvas.create_image(*config['lab_grid']['gold_icon'],anchor='nw',image=gold_ico)
     canvas.create_image(*config['lab_grid']['diamond_icon'],anchor='nw',image=diamond_ico)
     consume_gold_icon_grid = config['lab_grid']['consume_grid']
-    gold_textvar = tk.StringVar(value=str(gameset_copy.gold))
-    diamond_textvar = tk.StringVar(value=str(gameset_copy.diamond))
-    consume_gold_size = (30,12)
-    consume_diamond_size = (20,12)
+    gold_value = str(gameset_copy.gold)
+    diamond_value = str(gameset_copy.diamond)
+    consume_gold_size = (50,12)
+    consume_diamond_size = (40,12)
     level_size = (25,12)
-    gold_textvar_list = []
-    diamond_textvar_list = []
-    level_textvar_list = []
+    button_size = (25,25)
+    gold_label_list = []
+    diamond_label_list = []
+    level_label_list = []
     consume_label_dict = dict(fg='yellow',font=('arial',8),background=config['lab_grid']['background_color'])
-    for gold_key, diamond_key, level_key in zip(gold_consume_keys,diamond_consume_keys,level_keys):
-        level = gameset_copy.__dict__[level_key]
-        gold_textvar_list.append(tk.StringVar(value=gameset_copy.__dict__[gold_key][level]))
-        diamond_textvar_list.append(tk.StringVar(value=gameset_copy.__dict__[diamond_key][level]))
-        level_textvar_list.append(tk.StringVar(value="{}/{}".format(level+1,len(gameset_copy.__dict__[gold_key])+1)))
+
     # 显示升级消耗数值
     consume_gold_value_grid = [[coor[0]+20,coor[1]] for coor in consume_gold_icon_grid]
     consume_diamond_icon_grid = [[coor[0]+50,coor[1]] for coor in consume_gold_value_grid]
@@ -305,23 +340,34 @@ def run_lab():
     for gold_icon_coord,diamond_icon_coord in zip(consume_gold_icon_grid,consume_diamond_icon_grid):
         canvas.create_image(*gold_icon_coord,anchor='nw',image=small_gold_ico)
         canvas.create_image(*diamond_icon_coord,anchor='nw',image=small_diamond_ico)
-    gold_label = tk.Label(root,textvariable=gold_textvar,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'])
-    diamond_label = tk.Label(root,textvariable=diamond_textvar,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'])
+    gold_label = tk.Label(root,text=gold_value,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'],justify='left')
+    diamond_label = tk.Label(root,text=diamond_value,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'],justify='left')
     gold_label.pack()
     diamond_label.pack()
     
     canvas.create_window(*config['lab_grid']['gold_value'],anchor='nw',width=60,height=20,window=gold_label)
-    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=30,height=20,window=diamond_label)
-    for i,(gold_textvar,diamond_textvar,level_textvar) in enumerate(zip(gold_textvar_list,diamond_textvar_list,level_textvar_list)):
-        gold_label = tk.Label(root,cnf=consume_label_dict,textvariable=gold_textvar)
-        diamond_label = tk.Label(root,cnf=consume_label_dict,textvariable=diamond_textvar)
-        level_label = tk.Label(root,cnf=consume_label_dict,textvariable=level_textvar)
-        gold_label.pack()
-        diamond_label.pack()
+    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=45,height=20,window=diamond_label)
+    for index in range(len(gold_consume_keys)):
+        level = gameset_copy.__dict__[level_keys[index]]
+        gold_key = gold_consume_keys[index] 
+        diamond_key = diamond_consume_keys[index]
+        consume_gold = gameset_copy.__dict__[gold_key][level] if level < len(gameset_copy.__dict__[gold_key]) else 'Max Lv'
+        consume_diamond = gameset_copy.__dict__[diamond_key][level] if level < len(gameset_copy.__dict__[diamond_key]) else 'Max Lv'
+        consume_gold_label = tk.Label(root,cnf=consume_label_dict,text=consume_gold,justify='left')
+        consume_diamond_label = tk.Label(root,cnf=consume_label_dict,text=consume_diamond,justify='left')
+        level_label = tk.Label(root,cnf=consume_label_dict,text="{}/{}".format(level+1,len(gameset_copy.__dict__[gold_key])+1),justify='left')
+        button = tk.Button(root,command=lambda i=index: upgrade(i),image=upgrade_ico,background=config['lab_grid']['button_color'])
+        consume_gold_label.pack()
+        consume_diamond_label.pack()
         level_label.pack()
-        canvas.create_window(*consume_gold_value_grid[i],anchor='nw',width=consume_gold_size[0],height=consume_gold_size[1],window=gold_label)
-        canvas.create_window(*consume_diamond_value_grid[i],anchor='nw',width=consume_diamond_size[0],height=consume_diamond_size[1],window=diamond_label)
-        canvas.create_window(*config['lab_grid']['level_grid'][i],anchor='nw',width=level_size[0],height=level_size[1],window=level_label)
+        button.pack()
+        gold_label_list.append(consume_gold_label)
+        diamond_label_list.append(consume_diamond_label)
+        level_label_list.append(level_label)
+        canvas.create_window(*consume_gold_value_grid[index],anchor='nw',width=consume_gold_size[0],height=consume_gold_size[1],window=consume_gold_label)
+        canvas.create_window(*consume_diamond_value_grid[index],anchor='nw',width=consume_diamond_size[0],height=consume_diamond_size[1],window=consume_diamond_label)
+        canvas.create_window(*config['lab_grid']['level_grid'][index],anchor='nw',width=level_size[0],height=level_size[1],window=level_label)
+        canvas.create_window(*config['lab_grid']['upgrade_grid'][index],anchor='nw',width=button_size[0],height=button_size[1],window=button)
     refresh_button = tk.Button(root,text='重置',font=('kaiti',12),background=config['lab_grid']['button_color'],
                                foreground='yellow',image=refresh_icon,compound='left',
                                command=refresh)
@@ -419,6 +465,8 @@ def quit_game():
     clear_sprite(background_Group)
     scene_list.clear()
     scene_time.clear()   
+
+
 # 运行改装中心界面
 #def run_lab_interface():
 #    
