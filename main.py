@@ -216,6 +216,12 @@ def run_lab():
     global gameset
     gameset_copy = game_set()
     gameset_copy.__dict__ = gameset.__dict__
+    gold_consume_keys = ['HP_gold','HP_recover_gold','energy_gold','energy_recover_gold','cooling_gold','cooling_recover_gold',\
+                        'bullet_ID_gold','shooting_cd_gold','missile_num_gold','missile_damage_gold','missile_actime_gold','missile_flyingtime_gold']
+    diamond_consume_keys = ['HP_diamond','HP_recover_diamond','energy_diamond','energy_recover_diamond','cooling_diamond','cooling_recover_diamond',\
+                        'bullet_ID_diamond','shooting_cd_diamond','missile_num_diamond','missile_damage_diamond','missile_actime_diamond','missile_flyingtime_diamond']
+    level_keys = ['player_HP_level','player_HP_recover','player_energy_level','player_energy_recover_level','player_cooling_level','player_cooling_recover_level',\
+            'bullet_ID','bullet_shooting_cd_level','missile_num_level','missile_damage_level','missile_actime_level','missile_flyingtime_level']
     def refresh():
         nonlocal gameset_copy
         gameset_copy.__dict__ = gameset.__dict__
@@ -229,6 +235,10 @@ def run_lab():
     def save():
         gameset.__dict__ = gameset_copy.__dict__
         threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1,1.0)).start()
+    def print_coord(event:tk.Event):
+        print(f"({event.x},{event.y})")
+    
+        
     def on_closing():
         nonlocal gameset_copy
         if gameset.__dict__ != gameset_copy.__dict__:
@@ -237,8 +247,6 @@ def run_lab():
                 root.destroy()
         else:
             root.destroy()
-    gold_textvar = tk.StringVar(value=str(gameset_copy.gold))
-    diamond_textvar = tk.StringVar(value=str(gameset_copy.diamond))
     if not pygame.get_init():
         pygame.init()  # 初始化背景设置
         pygame.font.init() # 初始化字体设置
@@ -248,6 +256,7 @@ def run_lab():
     icon_config = CONFIG['icon']
     root = tk.Toplevel()
     root.title('实验室')
+    root.bind("<Button-1>",print_coord)
     win_width, win_height = config['lab_screen_size']
     root.geometry('{:d}x{:d}'.format(win_width,win_height))
     img = Image.open(config['lab_img'])
@@ -261,22 +270,58 @@ def run_lab():
     gold_ico = ImageTk.PhotoImage(gold_ico)
     diamond_ico = Image.open(os.path.join(icon_config['path'],icon_config['diamond'])).resize((30,25),Image.BICUBIC)
     diamond_ico = ImageTk.PhotoImage(diamond_ico)
+    small_gold_ico = Image.open(os.path.join(icon_config['path'],icon_config['gold'])).resize((15,15),Image.BICUBIC)
+    small_gold_ico = ImageTk.PhotoImage(small_gold_ico)
+    small_diamond_ico = Image.open(os.path.join(icon_config['path'],icon_config['diamond'])).resize((20,15),Image.BICUBIC)
+    small_diamond_ico = ImageTk.PhotoImage(small_diamond_ico)
     refresh_icon = Image.open(os.path.join(icon_config['path'],icon_config['refresh'])).resize((25,25),Image.BICUBIC)
     refresh_icon = ImageTk.PhotoImage(refresh_icon)
     save_icon = Image.open(os.path.join(icon_config['path'],icon_config['save'])).resize((25,25),Image.BICUBIC)
     save_icon = ImageTk.PhotoImage(save_icon)
     upgrade_ico = Image.open(os.path.join(icon_config['path'],icon_config['upgrade'])).resize((25,25),Image.BICUBIC)
     upgrade_ico = ImageTk.PhotoImage(upgrade_ico)
-    
+    # 显示升级消耗图标
     canvas.create_image(*config['lab_grid']['gold_icon'],anchor='nw',image=gold_ico)
     canvas.create_image(*config['lab_grid']['diamond_icon'],anchor='nw',image=diamond_ico)
+    consume_gold_icon_grid = config['lab_grid']['consume_grid']
+    gold_textvar = tk.StringVar(value=str(gameset_copy.gold))
+    diamond_textvar = tk.StringVar(value=str(gameset_copy.diamond))
+    consume_gold_size = (30,12)
+    consume_diamond_size = (20,12)
+    level_size = (25,12)
+    gold_textvar_list = []
+    diamond_textvar_list = []
+    level_textvar_list = []
+    consume_label_dict = dict(fg='yellow',font=('arial',8),background=config['lab_grid']['background_color'])
+    for gold_key, diamond_key, level_key in zip(gold_consume_keys,diamond_consume_keys,level_keys):
+        level = gameset_copy.__dict__[level_key]
+        gold_textvar_list.append(tk.StringVar(value=gameset_copy.__dict__[gold_key][level]))
+        diamond_textvar_list.append(tk.StringVar(value=gameset_copy.__dict__[diamond_key][level]))
+        level_textvar_list.append(tk.StringVar(value="{}/{}".format(level+1,len(gameset_copy.__dict__[gold_key])+1)))
+    # 显示升级消耗数值
+    consume_gold_value_grid = [[coor[0]+20,coor[1]] for coor in consume_gold_icon_grid]
+    consume_diamond_icon_grid = [[coor[0]+50,coor[1]] for coor in consume_gold_value_grid]
+    consume_diamond_value_grid = [[coor[0]+20,coor[1]] for coor in consume_diamond_icon_grid]
+    for gold_icon_coord,diamond_icon_coord in zip(consume_gold_icon_grid,consume_diamond_icon_grid):
+        canvas.create_image(*gold_icon_coord,anchor='nw',image=small_gold_ico)
+        canvas.create_image(*diamond_icon_coord,anchor='nw',image=small_diamond_ico)
     gold_label = tk.Label(root,textvariable=gold_textvar,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'])
     diamond_label = tk.Label(root,textvariable=diamond_textvar,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'])
     gold_label.pack()
     diamond_label.pack()
     
     canvas.create_window(*config['lab_grid']['gold_value'],anchor='nw',width=60,height=20,window=gold_label)
-    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=60,height=20,window=diamond_label)
+    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=30,height=20,window=diamond_label)
+    for i,(gold_textvar,diamond_textvar,level_textvar) in enumerate(zip(gold_textvar_list,diamond_textvar_list,level_textvar_list)):
+        gold_label = tk.Label(root,cnf=consume_label_dict,textvariable=gold_textvar)
+        diamond_label = tk.Label(root,cnf=consume_label_dict,textvariable=diamond_textvar)
+        level_label = tk.Label(root,cnf=consume_label_dict,textvariable=level_textvar)
+        gold_label.pack()
+        diamond_label.pack()
+        level_label.pack()
+        canvas.create_window(*consume_gold_value_grid[i],anchor='nw',width=consume_gold_size[0],height=consume_gold_size[1],window=gold_label)
+        canvas.create_window(*consume_diamond_value_grid[i],anchor='nw',width=consume_diamond_size[0],height=consume_diamond_size[1],window=diamond_label)
+        canvas.create_window(*config['lab_grid']['level_grid'][i],anchor='nw',width=level_size[0],height=level_size[1],window=level_label)
     refresh_button = tk.Button(root,text='重置',font=('kaiti',12),background=config['lab_grid']['button_color'],
                                foreground='yellow',image=refresh_icon,compound='left',
                                command=refresh)
@@ -297,7 +342,6 @@ def run_game(backcolor,interval):
         
     def succeeded():
         utils.play_music(pygame.mixer.Sound(CONFIG['setting']['success_sound_file']),volume=2.0)
-
             
     if not pygame.get_init():
         pygame.init()  # 初始化背景设置
@@ -350,7 +394,7 @@ def run_game(backcolor,interval):
                     threading.Thread(target=failed).start()
                     Global_info.has_fail = True
                 elif (now - init_time) % 1000 > 500:
-                    display_font_surface = display_font.render('Game Over',True,[255,0,0])
+                    display_font_surface = display_font.render('Mission Failed',True,[255,0,0])
                     screen.blit(display_font_surface,CONFIG['setting']['fail_font_pos'])
             if now - init_time > max_scene_time*1000 and len(enemy_Group.sprites())==0:
                 if not Global_info.has_success:
