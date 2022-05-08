@@ -14,10 +14,11 @@ interface:
     gold_icon: [15,45]
     gold_value: [40,47]
     diamond_icon: [110,45]
-    diamond_value: [130,47]
+    diamond_value: [135,47]
     refresh_icon: [265,20]
     save_icon: [265,45]
-
+    consume_grid: [[64,91],[64,139],[64,185],[64,231],[64,275],[64,323],[364,91],[364,139],[364,185],[364,231],[364,275],[364,323]]
+    level_grid: [[192,75],[192,122],[192,169],[192,215],[192,261],[192,308],[495,75],[495,122],[495,169],[495,215],[495,261],[495,308]]
 setting:
   sim_interval: 10  # (ms)
   screen_size: [480,600]
@@ -28,7 +29,7 @@ setting:
   scene_path: data/scene.json
   success_sound_file: Sound_effect/mission_accomplished.wav
   fail_sound_file: Sound_effect/mission_failed.wav
-  fail_font_pos: [120,300]
+  fail_font_pos: [100,300]
   success_font_pos: [70,300]
 
 player:
