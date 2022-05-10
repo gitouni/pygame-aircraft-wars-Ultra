@@ -60,6 +60,15 @@ def duplicate_path(path:list, iter:int):
         Path.extend(path)
     return Path
 
+def augment_path(path:list, random_permute=True, random_flip=True) -> list:
+    if random_permute and random.random() < 0.5:
+        path.reverse()
+    if random_flip and random.random() < 0.5:
+        for i in range(len(path)):
+            path[i][0] = 1 - path[i][0]
+    return path
+            
+            
 class Random_Scene_Generator:
     def __init__(self,path_dir:str,random_permute=True,random_flip=True,level=0):
         self.path_dir = path_dir
@@ -71,12 +80,7 @@ class Random_Scene_Generator:
     def get_path(self,index):
         with open(self.full_paths[index],'r')as f:
             path_list = json.load(f)
-        assert isinstance(path_list,list), "invalid path data!"
-        if self.random_permute and random.random() < 0.5:
-            path_list.reverse()
-        if self.random_flip and random.random() < 0.5:
-            for i in range(len(path_list)):
-                path_list[i][0] = 1 - path_list[i][0]
+        path_list = augment_path(path_list,self.random_permute,self.random_flip)
 
 # 场景函数
 """场景1:
@@ -186,18 +190,32 @@ class scene1():
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
                hook_background_group:pygame.sprite.Group,
-               init_time=pygame.time.get_ticks()):
+               init_time=pygame.time.get_ticks(),random_permute=False,random_flip=False):
         assert cls_info['type'] == 'scene1', "types of scene_info and scene dont't fit"
+        cnt = dict(type='scene1',
+                    point_list=[[0.5, -0.2],[0.5,1.2]],
+                    enemy_num=2,
+                    enemy_id='ea0',
+                    enemy_fire_id=0,
+                    bullet_time=0,
+                    bullet_speed=3,
+                    bullet_target=[1,1],
+                    enemy_speed=2.0,
+                    dt=0.5,
+                    scene_time=0.0,
+                    random_permute=False,
+                    random_flip=False)
+        cnt.update(cls_info)
         scene = scene1(myscreen=background,
-                       t0=cls_info['bullet_time'],
-                       enemy_num=cls_info['enemy_num'],
-                       enemy_ID=cls_info['enemy_id'],
-                       bullet_speed=cls_info['bullet_speed'],
-                       bullet_target=cls_info['bullet_target'],
-                       bullet_ID=cls_info['enemy_fire_id'],
-                       speed=cls_info['enemy_speed'],
-                       PointList=PointList_tran(cls_info['point_list']),
-                       dt=cls_info['dt'],
+                       t0=cnt['bullet_time'],
+                       enemy_num=cnt['enemy_num'],
+                       enemy_ID=cnt['enemy_id'],
+                       bullet_speed=cnt['bullet_speed'],
+                       bullet_target=cnt['bullet_target'],
+                       bullet_ID=cnt['enemy_fire_id'],
+                       speed=cnt['enemy_speed'],
+                       PointList=augment_path(PointList_tran(cnt['point_list']),cnt['random_permute'],cnt['random_flip']),
+                       dt=cnt['dt'],
                        hook_global_info=hook_global_info,
                        hook_enemy_group=hook_enemy_group,
                        hook_enemyfire_group=hook_enemyfire_group,
@@ -205,7 +223,7 @@ class scene1():
                        hook_background_group=hook_background_group,
                        init_time=init_time)
         scene_list.append(scene)
-        scene_time.append(cls_info['scene_time'])
+        scene_time.append(cnt['scene_time'])
         
 
 # 场景函数
@@ -337,26 +355,45 @@ class scene2():
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
                hook_background_group:pygame.sprite.Group,
-               init_time=pygame.time.get_ticks()):
+               init_time=pygame.time.get_ticks(),random_permute=False,random_flip=False):
         assert cls_info['type'] == 'scene2', "types of scene_info and scene dont't fit"
+        cnt =  dict(type='scene2',
+                    point_list=[[0.5, 0.1], [0.45, 0.11], [0.41, 0.12], [0.38, 0.13], [0.35, 0.15], [0.34, 0.17], [0.36, 0.2], [0.39, 0.21], [0.43, 0.22], [0.48, 0.22], [0.52, 0.21], [0.56, 0.19], [0.6, 0.17], [0.6, 0.15], [0.56, 0.14], [0.52, 0.13], [0.48, 0.13], [0.43, 0.13], [0.39, 0.13], [0.36, 0.15], [0.35, 0.17], [0.37, 0.19], [0.42, 0.19], [0.47, 0.19], [0.5, 0.17], [0.52, 0.15], [0.5, 0.13], [0.45, 0.13], [0.42, 0.14], [0.4, 0.16], [0.41, 0.18], [0.44, 0.18], [0.48, 0.19], [0.53, 0.18], [0.56, 0.17], [0.58, 0.15], [0.59, 0.12], [0.56, 0.11], [0.51, 0.11]],
+                    enemy_id='eb0',
+                    enemy_fire_id=8,
+                    enemy_speed=0.5,
+                    enemy_init_speed=1.5,
+                    max_iter=1,
+                    bullet_speed=1.0,
+                    bullet_target=[0,-1],
+                    bullet_cd=0.4,
+                    bullet_break_cnt=2,
+                    bullet_break=2.0,
+                    wait_time=0.8,
+                    scene_time=0.0,
+                    random_permute=False,
+                    random_flip=False
+               )
+        cnt.update(cls_info)
         scene = scene2(myscreen=background,
-                       enemy_ID=cls_info['enemy_id'],
-                       PointList=PointList_tran(cls_info['point_list']),
-                       speed=cls_info['enemy_speed'],
-                       init_speed=cls_info['enemy_init_speed'],
-                       max_iter=cls_info['max_iter'],
-                       bullet_speed=cls_info['bullet_speed'],
-                       bullet_ID=cls_info['enemy_fire_id'],
-                       bullet_target=cls_info['bullet_target'],
-                       bullet_cd=cls_info['bullet_cd'],
-                       bullet_break=cls_info['bullet_break'],
-                       bullet_break_cnt=cls_info['bullet_break_cnt'],
+                       enemy_ID=cnt['enemy_id'],
+                       PointList=augment_path(PointList_tran(cnt['point_list']),cnt['random_permute'],cnt['random_flip']),
+                       speed=cnt['enemy_speed'],
+                       init_speed=cnt['enemy_init_speed'],
+                       max_iter=cnt['max_iter'],
+                       bullet_speed=cnt['bullet_speed'],
+                       bullet_ID=cnt['enemy_fire_id'],
+                       bullet_target=cnt['bullet_target'],
+                       bullet_cd=cnt['bullet_cd'],
+                       bullet_break=cnt['bullet_break'],
+                       bullet_break_cnt=cnt['bullet_break_cnt'],
                        hook_global_info=hook_global_info,
                        hook_enemy_group=hook_enemy_group,
                        hook_enemyfire_group=hook_enemyfire_group,
                        hook_player=hook_player,
                        hook_background_group=hook_background_group,
                        init_time=init_time,
-                       wait_time=cls_info['wait_time'])
+                       wait_time=cnt['wait_time'],
+                       )
         scene_list.append(scene)
-        scene_time.append(cls_info['scene_time'])
+        scene_time.append(cnt['scene_time'])

@@ -58,8 +58,12 @@ class fighter(pygame.sprite.Sprite):
         self.pos = self.rect.centerx,self.rect.centery
         self.bullet_speed = 10
         self.bullet_ID = 0
-        self.bullet1_pos = self.pos[0]-0.3125*self.size[0],self.pos[1]-0.08*self.size[1]
-        self.bullet2_pos = self.pos[0]+0.3125*self.size[0],self.pos[1]-0.08*self.size[1]
+        self.bullet_pos = [(int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]+0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]-0.25*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]+0.25*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]-0.17*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]+0.17*self.size[0]),int(self.pos[1]+0.08*self.size[1])),]
         self.screen_rect = self.hook_gamescreen.get_rect()  # 活动矩形范围
         self.rect.centerx = self.screen_rect.centerx # 初始化的位置
         self.rect.bottom = self.screen_rect.bottom
@@ -77,8 +81,8 @@ class fighter(pygame.sprite.Sprite):
         self.missile_num = 2
         self.missile_damge = 10
         self.missile_dir = [(0,-1),(0,-1),(-1,-1),(1,-1),(-1,0),(1,0),(-2,-1),(2,-1)]
-        self.missile_pos = [self.bullet1_pos,self.bullet2_pos,self.bullet1_pos,self.bullet2_pos,
-                            self.bullet1_pos,self.bullet2_pos,self.bullet1_pos,self.bullet2_pos]
+        self.missile_pos = [self.bullet_pos[0],self.bullet_pos[1],self.bullet_pos[0],self.bullet_pos[1],
+                            self.bullet_pos[0],self.bullet_pos[1],self.bullet_pos[0],self.bullet_pos[1]]
         self.missile_actime = 3
         self.missile_speed_max = 5
         self.missile_flyingtime = 3
@@ -128,26 +132,31 @@ class fighter(pygame.sprite.Sprite):
     def update_bltpos(self):
         # 更新发射子弹的位置
         self.pos = self.rect.centerx,self.rect.centery
-        self.bullet1_pos = (int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1]))
-        self.bullet2_pos = (int(self.pos[0]+0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1]))
-        self.missile_pos = [self.bullet1_pos,self.bullet2_pos,self.bullet1_pos,self.bullet2_pos,
-                            self.bullet1_pos,self.bullet2_pos,self.bullet1_pos,self.bullet2_pos]
+        self.bullet_pos = [(int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]+0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]-0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]+0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]-0.1*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
+                        (int(self.pos[0]+0.1*self.size[0]),int(self.pos[1]+0.08*self.size[1])),]
+        
+        self.missile_pos = [self.bullet_pos[0],self.bullet_pos[1],self.bullet_pos[0],self.bullet_pos[1],
+                            self.bullet_pos[0],self.bullet_pos[1],self.bullet_pos[0],self.bullet_pos[1]]
     def shoot(self):
         threading.Thread(target=utils.thread_play_music,args=(self.bullet_sound_file,0.2)).start()
         self.update_bltpos()
         if self.shoot1: # 射击点位1
-            blt1 = bullet(self.screen,self.bullet1_pos,self.bullet_speed,self.bullet_ID,(0,-1))
-            blt2 = bullet(self.screen,self.bullet2_pos,self.bullet_speed,self.bullet_ID,(0,-1))
+            blt1 = bullet(self.screen,self.bullet_pos[0],self.bullet_speed,self.bullet_ID,(0,-1))
+            blt2 = bullet(self.screen,self.bullet_pos[1],self.bullet_speed,self.bullet_ID,(0,-1))
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)
         if self.shoot2:
-            blt1 = bullet(self.screen,self.bullet1_pos,self.bullet_speed,self.bullet_ID,(-1,-1))
-            blt2 = bullet(self.screen,self.bullet2_pos,self.bullet_speed,self.bullet_ID,(1,-1))
+            blt1 = bullet(self.screen,self.bullet_pos[2],self.bullet_speed,self.bullet_ID,(0,-1))
+            blt2 = bullet(self.screen,self.bullet_pos[3],self.bullet_speed,self.bullet_ID,(0,-1))
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)
         if self.shoot3:
-            blt1 = bullet(self.screen,self.bullet1_pos,self.bullet_speed,self.bullet_ID,(-1,0))
-            blt2 = bullet(self.screen,self.bullet2_pos,self.bullet_speed,self.bullet_ID,(1,0))
+            blt1 = bullet(self.screen,self.bullet_pos[4],self.bullet_speed,self.bullet_ID,(0,-1))
+            blt2 = bullet(self.screen,self.bullet_pos[5],self.bullet_speed,self.bullet_ID,(0,-1))
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)  
         
@@ -210,7 +219,7 @@ class fighter(pygame.sprite.Sprite):
         self.HP = clip(self.HP+self.HP_recover,0,self.HP_max)
         self.energy = clip(self.energy+self.energy_recover,0,self.energy_max)
         delta_cooling = -(self.init_shooting_cd/self.shooting_cd)*\
-                      (self.shoot1+self.shoot2+self.shoot3)*0.05*self.shooting
+                      (self.shoot1+self.shoot2+self.shoot3)*0.075*self.shooting
         self.cooling = clip(self.cooling+self.cooling_recover+delta_cooling,0,self.cooling_max)
         
     def hurt(self,damage):
