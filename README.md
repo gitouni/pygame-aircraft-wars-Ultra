@@ -1,4 +1,5 @@
 # pygame-aircraft-wars-Ultra
+![Screenshot](https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/a777c40a73c9d66d4d67f5e8e8d95e7cd44297b7/screenshots/ex1.jpg)
 Aircraft wars - Ultra This project is developed with pygame engine. Some essential elements like interface, player, enemies and scoring system have been added with some special effects enhancement! Some exciting elements to show:
 
 Sound effect with attack, receiving attack and explode
