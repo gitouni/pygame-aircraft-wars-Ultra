@@ -11,7 +11,7 @@ player weapon: Missile (can track enemies automatically and has maximum flight t
 
 enemy scene can be created by a GUI without any code! Multiple customizable properties！
 
-The fighter upgrade system will appear in subsequent versions！
+More levels will appear in subsequent versions！
 ### Get Start
 * Install:
 
