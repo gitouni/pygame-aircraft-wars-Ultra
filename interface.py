@@ -2,7 +2,7 @@ import pygame
 import pygame.mixer
 import pygame.font
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, scrolledtext
 import threading
 import os
 from PIL import Image,ImageTk
@@ -11,6 +11,53 @@ from copy import deepcopy
 from Game_set import game_set
 import utils
 
+
+def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
+    img = Image.open(file).resize(size)
+    return ImageTk.PhotoImage(img)
+
+
+    
+def run_help():
+    def show_operation_txt():
+        nonlocal notebook
+        notebook.delete('0.0',tk.END)
+        notebook.insert('0.0',help_operation_txt)
+    def show_note_txt():
+        nonlocal notebook
+        notebook.delete('0.0',tk.END)
+        notebook.insert('0.0',help_note_txt)
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)['help']
+    root = tk.Toplevel()
+    win_width,win_height = CONFIG['screen_size']
+    button_size = CONFIG['button_size']
+    bg_color = CONFIG['button_bg_color']
+    small_button_size = CONFIG['small_button_size']
+    with open(CONFIG['help_operation_txt'],'r',encoding='utf-8')as f:
+        help_operation_txt = ''.join(f.readlines())
+    with open(CONFIG['help_note_txt'],'r',encoding='utf-8')as f:
+        help_note_txt = ''.join(f.readlines())
+    root.geometry("{}x{}".format(win_width,win_height))
+    root.title('帮助')
+    canvas = tk.Canvas(root,height=win_height, width=win_width,
+        bd=0, highlightthickness=0)
+    canvas.pack()
+    notebook = scrolledtext.ScrolledText(root,width=win_width-10,height=win_height-60,font=('songti',10))
+    notebook.insert('0.0',help_operation_txt)
+    notebook.pack()
+    bg_img = Image_load(CONFIG['background_img'],(win_width,win_height))
+    operation_icon = Image_load(CONFIG['help_operation_icon'],small_button_size)
+    note_icon = Image_load(CONFIG['help_note_icon'],small_button_size)
+    operation_button = tk.Button(root,bg=bg_color,image=operation_icon,text='操作',font=('heiti',12),compound='left',fg='white',command=show_operation_txt)
+    note_button = tk.Button(root,bg=bg_color,image=note_icon,text='攻略',font=('heiti',12),compound='left',fg='white',command=show_note_txt)
+    operation_button.pack()
+    note_button.pack()
+    canvas.create_image(0,0,anchor='nw',image=bg_img)
+    canvas.create_window(*CONFIG['notebook_pos'],anchor='nw',width=win_width-10,height=win_height-60,window=notebook)
+    canvas.create_window(*CONFIG['help_operation_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=operation_button)
+    canvas.create_window(*CONFIG['help_note_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=note_button)
+    root.mainloop()
 
 def run_lab(gameset:game_set):
     with open('config.yml','r')as f:

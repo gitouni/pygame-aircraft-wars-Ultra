@@ -39,9 +39,10 @@ enemyfire_type_b = utils.extract_type(enemyfire_dict['filename'],type='b')
 
 class fighter(pygame.sprite.Sprite):
     def __init__(self,hook_background:pygame.Surface,hook_gamescreen:pygame.Surface,hook_enemy_group:pygame.sprite.Group,
-                 hook_bullet_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group):
+                 hook_bullet_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group,sim_interval:float):
         pygame.sprite.Sprite.__init__(self)
         self.screen = hook_background  # 坐标
+        self.sim_interval = sim_interval
         self.hook_enemy_group = hook_enemy_group
         self.hook_gamescreen = hook_gamescreen
         self.hook_bullet_group = hook_bullet_group
@@ -110,10 +111,10 @@ class fighter(pygame.sprite.Sprite):
         self.HP_max = self.HP
         self.HP_recover =  gameset.player_HP_recover_list[gameset.player_HP_recover]
         self.energy = gameset.player_energy_list[gameset.player_energy_level]
-        self.energy_recover = gameset.player_energy_recover_list[gameset.player_energy_recover_level] * sim_interval/10.0
+        self.energy_recover = gameset.player_energy_recover_list[gameset.player_energy_recover_level] * self.sim_interval/10.0
         self.energy_max = self.energy
         self.cooling = gameset.player_cooling_list[gameset.player_cooling_level]
-        self.cooling_recover = gameset.player_cooling_recover_list[gameset.player_cooling_recover_level] * sim_interval/10.0
+        self.cooling_recover = gameset.player_cooling_recover_list[gameset.player_cooling_recover_level] * self.sim_interval/10.0
         self.cooling_max = self.cooling
         self.bullet_ID = gameset.bullet_ID
         self.shooting_cd = gameset.player_shooting_cd_list[gameset.bullet_shooting_cd_level]
@@ -145,18 +146,18 @@ class fighter(pygame.sprite.Sprite):
         threading.Thread(target=utils.thread_play_music,args=(self.bullet_sound_file,0.2)).start()
         self.update_bltpos()
         if self.shoot1: # 射击点位1
-            blt1 = bullet(self.screen,self.bullet_pos[0],self.bullet_speed,self.bullet_ID,(0,-1))
-            blt2 = bullet(self.screen,self.bullet_pos[1],self.bullet_speed,self.bullet_ID,(0,-1))
+            blt1 = bullet(self.screen,self.bullet_pos[0],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            blt2 = bullet(self.screen,self.bullet_pos[1],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)
         if self.shoot2:
-            blt1 = bullet(self.screen,self.bullet_pos[2],self.bullet_speed,self.bullet_ID,(0,-1))
-            blt2 = bullet(self.screen,self.bullet_pos[3],self.bullet_speed,self.bullet_ID,(0,-1))
+            blt1 = bullet(self.screen,self.bullet_pos[2],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            blt2 = bullet(self.screen,self.bullet_pos[3],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)
         if self.shoot3:
-            blt1 = bullet(self.screen,self.bullet_pos[4],self.bullet_speed,self.bullet_ID,(0,-1))
-            blt2 = bullet(self.screen,self.bullet_pos[5],self.bullet_speed,self.bullet_ID,(0,-1))
+            blt1 = bullet(self.screen,self.bullet_pos[4],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            blt2 = bullet(self.screen,self.bullet_pos[5],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)  
         
@@ -170,7 +171,7 @@ class fighter(pygame.sprite.Sprite):
             for i in range(missile_num):
                 missile0 = missile(self.screen,self.missile_pos[i],self.missile_dir[i],
                                    self.missile_actime,self.missile_speed_max,self.missile_damge,self.missile_flyingtime,
-                                   hook_enemy_group=self.hook_enemy_group,hook_background_group=self.hook_background_group
+                                   hook_enemy_group=self.hook_enemy_group,hook_background_group=self.hook_background_group,sim_interval=self.sim_interval
                                    )
                 self.hook_bullet_group.add(missile0)
             self.energy -= missile_num*5
@@ -203,7 +204,8 @@ class fighter(pygame.sprite.Sprite):
                 if self.energy > (self.shoot1+self.shoot2+self.shoot3) and self.cooling > 0: # 满足要求时保持射击
                     self.shoot() # 射击
                     self.update_shoot_time() # 更新时间
-                    self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3) # 消耗能量
+                    self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3) * self.sim_interval/15.0 # 消耗能量
+                    self.cooling -= self.shoot1/self.shooting_cd*0.25*self.sim_interval/15.0
                 else:
                     self.shooting = False
         if self.launching:
@@ -229,17 +231,17 @@ class fighter(pygame.sprite.Sprite):
             explode0 = explode(self.screen,self.rect.center)
             self.hook_background_group.add(explode0)
             self.HP = 0
-        threading.Thread(target=utils.thread_play_music,args=(self.hit_sound_file,)).start()
+        threading.Thread(target=utils.thread_play_music,args=(self.hit_sound_file,0.3)).start()
             
             
     def dead(self):
-        threading.Thread(target=utils.thread_play_music,args=(self.explode_sound_file,)).start()
+        threading.Thread(target=utils.thread_play_music,args=(self.explode_sound_file,0.5)).start()
         self.alive_ = False
         self.kill()
 
 # 子弹类
 class bullet(pygame.sprite.Sprite):
-    def __init__(self,screen:pygame.Surface,location,speed,ID,speed_dir):
+    def __init__(self,screen:pygame.Surface,location,speed,ID,speed_dir,sim_interval:float):
         pygame.sprite.Sprite.__init__(self)  # 类继承
         self.screen = screen
         self.ID = ID
@@ -265,9 +267,10 @@ class bullet(pygame.sprite.Sprite):
 # 导弹类
 class missile(pygame.sprite.Sprite):
     def __init__(self,screen:pygame.Surface,pos,speed_dir,ac_time,max_speed,damage,flying_time,
-                 hook_enemy_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group,
+                 hook_enemy_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group,sim_interval:float,
                  tracktime=300):
         pygame.sprite.Sprite.__init__(self)  # 类继承
+        self.sim_interval = sim_interval
         self.screen = screen
         self.hook_enemy_group = hook_enemy_group
         self.hook_background_group = hook_background_group
@@ -300,7 +303,7 @@ class missile(pygame.sprite.Sprite):
     def accelerate(self):
         dt = pygame.time.get_ticks()-self.lifetime
         dv = 1/self.ac_time*dt
-        self.speed = min(self.init_speed+dv,self.speed_max)
+        self.speed = min(self.init_speed+dv,self.speed_max) * self.sim_interval/10.0
     def find_target(self):
         # 寻找目标
         target_list = list()
@@ -336,7 +339,7 @@ class missile(pygame.sprite.Sprite):
         self.speed_vector = utils.speed_tran(self.speed,self.speed_dir)
         self.move_dxy[0] += self.speed_vector[0]
         self.move_dxy[1] += self.speed_vector[1]
-        intmove_dxy = int(self.move_dxy[0]), int(self.move_dxy[1])
+        intmove_dxy = round(self.move_dxy[0]), round(self.move_dxy[1])
         self.rect.move_ip(intmove_dxy)
         self.move_dxy[0] -= intmove_dxy[0]
         self.move_dxy[1] -= intmove_dxy[1]
@@ -375,7 +378,7 @@ class enemy_fire(pygame.sprite.Sprite):
             sound = pygame.mixer.Sound(CONFIG['enemyfire']['type_b_sound_file'])
             threading.Thread(target=utils.play_music,args=(sound,0.3)).start()
         self.speed_dir = speed_dir
-        self.speed_value = speed * sim_interval/10.0
+        self.speed_value = speed
         self.speed = utils.speed_tran(self.speed_value,speed_dir)
         self.move_dxy = [0,0]
         self.img_ad = os.path.join(enemyfire_path,enemyfire_dict['filename'][ID])
@@ -406,16 +409,17 @@ class enemy_fire(pygame.sprite.Sprite):
 class enemy(pygame.sprite.Sprite):
     def __init__(self,myscreen:pygame.Surface,ID,pos,speed,speed_dir,bullet_speed,bullet_ID,
                  hook_global_info:utils.Info,hook_enemy_group:pygame.sprite.Group,hook_enemyfire_group:pygame.sprite.Group,
-                 hook_background_group:pygame.sprite.Group):
+                 hook_background_group:pygame.sprite.Group,sim_interval:float):
         pygame.sprite.Sprite.__init__(self)
         self.screen = myscreen  # 坐标
+        self.sim_interval = sim_interval
         self.hook_global_info = hook_global_info
         self.hook_enemy_group = hook_enemy_group
         self.hook_enemyfire_group = hook_enemyfire_group
         self.hook_background_group = hook_background_group
         self.ID = enemy_names.index(ID) # 敌机型号
         self.speed_dir = speed_dir # 运动方向属性
-        self.speed_value = speed
+        self.speed_value = speed * sim_interval/10.0
         self.speed = utils.speed_tran(speed,self.speed_dir) # 速度属性
         self.move_dxy = [0,0]
         self.agl = -180/pi*atan2(self.speed_dir[0],-self.speed_dir[1])
@@ -434,7 +438,7 @@ class enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()  # 占用矩形范围
         self.size = (self.rect.width,self.rect.height)
         self.pos = self.rect.center
-        self.bullet_speed = bullet_speed
+        self.bullet_speed = bullet_speed * sim_interval/10.0
         self.bullet_ID = bullet_ID
         self.bullet_pos = self.rect.center
         self.screen_rect = self.screen.get_rect()  # 活动矩形范围
@@ -443,7 +447,7 @@ class enemy(pygame.sprite.Sprite):
         self.time = pygame.time.get_ticks()
         self.HP_max = float(enemy_dict['HP'][self.ID]) # 最大生命值
         self.HP = self.HP_max # 现有生命值
-        self.collide_damage = self.HP # 撞击敌机会造成等同生命值的伤害
+        self.collide_damage = self.HP_max # 撞击敌机会造成等同生命值的伤害
         self.i = 0
         self.n = 0
         self.p = 0
@@ -525,7 +529,7 @@ class enemy(pygame.sprite.Sprite):
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长
         explode0 = explode(self.screen,self.rect.center,(explode_r,explode_r))
         self.hook_background_group.add(explode0) 
-        threading.Thread(target=utils.play_music,args=(self.explode_sound,)).start()
+        threading.Thread(target=utils.play_music,args=(self.explode_sound,0.3)).start()
         
 
 # 爆炸动画精灵

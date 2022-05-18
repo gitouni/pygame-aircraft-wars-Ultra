@@ -20,17 +20,77 @@ interface:
     consume_grid: [[64,91],[64,139],[64,185],[64,231],[64,275],[64,323],[364,91],[364,139],[364,185],[364,231],[364,275],[364,323]]
     level_grid: [[192,75],[192,122],[192,169],[192,215],[192,261],[192,308],[495,75],[495,122],[495,169],[495,215],[495,261],[495,308]]
     upgrade_grid: [[224,78],[224,125],[224,173],[224,219],[224,264],[224,311],[529,78],[529,125],[529,173],[529,219],[529,264],[529,311]]
+
+account:
+  background_img: background_jpg/b2.jpg
+  refresh_sound_file: Sound_effect/refresh.wav
+  upgrade_sound_file: Sound_effect/pay.wav
+  save_sound_file: Sound_effect/ensure.wav
+  error_sound_file: Sound_effect/error.wav
+  exit_sound_file: Sound_effect/tip.wav
+  screen_size: [165,220]
+  button_size: [100,30]
+  create_pos: [60,40]
+  load_pos: [60,80]
+  button_color: "#FFFFFF"
+  initial_gold: 20000
+  initial_diamond: 200
+
+main:
+  background_img: background_jpg/b0.jpg
+  screen_size: [240,320]
+  welcome_pos: [10,8]
+  welcome_color: "white"
+  sign_pos: [10,250]
+  account_pos: [115,55]
+  account_icon: icon_png/account_interface.png
+  start_pos: [115,95]
+  start_icon: icon_png/play_interface.png
+  lab_pos: [115,135]
+  lab_icon: icon_png/lab_interface.png
+  button_size: [120,30]
+  small_button_size: [25,25]
+  help_icon: icon_png/help.png
+  setting_icon: icon_png/setting.png
+  help_pos: [190,290]
+  setting_pos: [220,290]
+  help_color: "#2C3B35"
+  setting_color: "#2C3B35"
+  exit_sound_file: Sound_effect/tip.wav
+
+help:
+  background_img: background_jpg/b1.jpg
+  screen_size: [240,320]
+  button_bg_color: "#2C3B35"
+  help_operation_icon: icon_png/help_operation.png
+  help_note_icon: icon_png/help_note.png
+  help_operation_pos: [20,10]
+  help_note_pos: [120,10]
+  notebook_pos: [5,40]
+  button_size: [60,25]
+  small_button_size: [20,20]
+  help_operation_txt: text/help_operation.txt
+  help_note_txt: text/help_note.txt
+
+set:
+  sim_interval_list: [7.5,10,15,30] 
+  screen_size: [140,140]
+  steps: 20
+  min_volume: 0
+  max_volume: 1
+
 setting:
-  sim_interval: 10  # (ms)
+  sim_interval: 15  # (ms)
   screen_size: [480,600]
   status_bar_size: [480,30]
   gamescreen_size: [480,570]
   background_color: [0,0,0]
   bg_rollv: 18
+  account_path: account/
   scene_path: data/scene.json
   success_sound_file: Sound_effect/mission_accomplished.wav
   fail_sound_file: Sound_effect/mission_failed.wav
-  fail_font_pos: [100,300]
+  fail_font_pos: [120,300]
   success_font_pos: [70,300]
 
 player:

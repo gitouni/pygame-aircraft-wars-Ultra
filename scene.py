@@ -93,7 +93,8 @@ class scene1():
     def __init__(self,myscreen:pygame.Surface,t0,enemy_num,enemy_ID,bullet_speed,bullet_ID,speed,PointList,dt,bullet_target,
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
-                 hook_background_group:pygame.sprite.Group,init_time:int):
+                 hook_background_group:pygame.sprite.Group,sim_interval:float,init_time:int):
+        self.sim_interval = sim_interval
         speed *= sim_interval/10.0
         self.screen = myscreen
         self.N = enemy_num # 场景初始敌机数
@@ -111,7 +112,7 @@ class scene1():
         self.need_to_end = False
         self.started = False
         self.init_time = init_time   
-        self.bullet_speed = bullet_speed
+        self.bullet_speed = bullet_speed * sim_interval/30.0
         self.bullet_ID = bullet_ID
         self.bullet_target = bullet_target
         self.speed = speed
@@ -119,7 +120,7 @@ class scene1():
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
         for i in range(self.N):
             enemy0 = enemy(self.screen,self.enemy_ID,self.PointList[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
-                           self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group)
+                           self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,sim_interval)
             enemy0.data = [0,0,len(self.path),i] 
             '''
             data[0]:敌机目前处在的最小分段点
@@ -189,8 +190,8 @@ class scene1():
                hook_player:fighter,hook_global_info:utils.Info,
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
-               hook_background_group:pygame.sprite.Group,
-               init_time=pygame.time.get_ticks(),random_permute=False,random_flip=False):
+               hook_background_group:pygame.sprite.Group,sim_interval:float,
+               init_time=pygame.time.get_ticks()):
         assert cls_info['type'] == 'scene1', "types of scene_info and scene dont't fit"
         cnt = dict(type='scene1',
                     point_list=[[0.5, -0.2],[0.5,1.2]],
@@ -221,6 +222,7 @@ class scene1():
                        hook_enemyfire_group=hook_enemyfire_group,
                        hook_player=hook_player,
                        hook_background_group=hook_background_group,
+                       sim_interval=sim_interval,
                        init_time=init_time)
         scene_list.append(scene)
         scene_time.append(cnt['scene_time'])
@@ -241,10 +243,12 @@ class scene2():
                  bullet_speed,bullet_ID,bullet_target,bullet_cd,bullet_break_cnt,bullet_break,
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
-                 hook_background_group:pygame.sprite.Group,init_time:int=0,wait_time:float=0.5):
-        init_speed = init_speed * sim_interval/10.0
-        speed = speed * sim_interval/10.0
+                 hook_background_group:pygame.sprite.Group,sim_interval:float,
+                 init_time:int=0,wait_time:float=0.5):
+        init_speed *= sim_interval/10.0
+        speed *= sim_interval/10.0
         self.screen = myscreen
+        self.sim_interval = sim_interval
         self.enemy_ID = enemy_ID
         start_PointList = [(PointList[0][0],-0.05*GAME_SCREEN[1]),PointList[0]]
         end_PointList = [PointList[-1],(PointList[-1][0],1.2*GAME_SCREEN[1])]
@@ -283,7 +287,7 @@ class scene2():
         
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
         self.enemy = enemy(self.screen,self.enemy_ID,self.path[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
-                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group)
+                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,self.sim_interval)
         self.enemy.data = [0,0,len(self.path),0] 
         '''
         data[0]:敌机目前处在的最小（直线）分段点
@@ -354,8 +358,8 @@ class scene2():
                hook_player:fighter,hook_global_info:utils.Info,
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
-               hook_background_group:pygame.sprite.Group,
-               init_time=pygame.time.get_ticks(),random_permute=False,random_flip=False):
+               hook_background_group:pygame.sprite.Group,sim_interval:float,
+               init_time=pygame.time.get_ticks()):
         assert cls_info['type'] == 'scene2', "types of scene_info and scene dont't fit"
         cnt =  dict(type='scene2',
                     point_list=[[0.5, 0.1], [0.45, 0.11], [0.41, 0.12], [0.38, 0.13], [0.35, 0.15], [0.34, 0.17], [0.36, 0.2], [0.39, 0.21], [0.43, 0.22], [0.48, 0.22], [0.52, 0.21], [0.56, 0.19], [0.6, 0.17], [0.6, 0.15], [0.56, 0.14], [0.52, 0.13], [0.48, 0.13], [0.43, 0.13], [0.39, 0.13], [0.36, 0.15], [0.35, 0.17], [0.37, 0.19], [0.42, 0.19], [0.47, 0.19], [0.5, 0.17], [0.52, 0.15], [0.5, 0.13], [0.45, 0.13], [0.42, 0.14], [0.4, 0.16], [0.41, 0.18], [0.44, 0.18], [0.48, 0.19], [0.53, 0.18], [0.56, 0.17], [0.58, 0.15], [0.59, 0.12], [0.56, 0.11], [0.51, 0.11]],
@@ -392,6 +396,7 @@ class scene2():
                        hook_enemyfire_group=hook_enemyfire_group,
                        hook_player=hook_player,
                        hook_background_group=hook_background_group,
+                       sim_interval=sim_interval,
                        init_time=init_time,
                        wait_time=cnt['wait_time'],
                        )

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import tkinter as tk
-from tkinter import messagebox
 from scipy.interpolate import splrep,splev
 import numpy as np
 import json
