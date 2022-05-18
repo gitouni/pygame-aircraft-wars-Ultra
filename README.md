@@ -5,11 +5,15 @@ Aircraft wars - Ultra This project is developed with pygame engine. Some essenti
 
 Sound effect with attack, receiving attack and explode
 
-player status: HP, cooling, enenergy player award: gold, dimaond, score
+Player status: HP, cooling, enenergy
 
-player weapon: Missile (can track enemies automatically and has maximum flight time), bullet
+Player award: gold, dimaond, score
 
-enemy scene can be created by a GUI without any code! Multiple customizable properties！
+Player weapon: missile, bullet
+
+Enemy scene can be created by a GUI without any code!
+
+Multiple customizable properties！
 
 More levels will appear in subsequent versions！
 ### Get Start
