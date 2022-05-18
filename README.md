@@ -15,18 +15,25 @@ The fighter upgrade system will appear in subsequent versions！
 ### Get Start
 * Install:
 `pip install -r requirements.txt`
+
 Python>=3.7.1 recommended
 * Run:
 `python main.py`
+
 ### How to Play:
 * Operation:
-
 open/cease fire: F
+
 fire more/less bullets: Q/W/E
+
 launch missile (s): Space
+
 Move: up/down/left/right
 * Note:
 State bar: HP, energy, cooling
+
 Create your account first (20000 gold, 200 diamond for initial resource) and use it to upgrade your spaceship in lab!
+
 Open fire and launch missile (s) all consume energy and cooling.
+
 Hope you enjoy it!
