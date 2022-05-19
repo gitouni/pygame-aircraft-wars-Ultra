@@ -120,7 +120,7 @@ def scene_check(now):
 
 
 
-def create_scene(player:fighter,background:pygame.Surface,player_info:Info):
+def create_scene(player:fighter,background:pygame.Surface,player_info:Info,volume_multiply:float=1.0):
     max_scene_time = 0
     for scene_info in scenes:
         scene_class[scene_info['type']].create(scene_info,scene_list,scene_time,background,
@@ -129,7 +129,8 @@ def create_scene(player:fighter,background:pygame.Surface,player_info:Info):
                                                hook_enemyfire_group=enemyfire_Group,
                                                hook_background_group=background_Group,
                                                sim_interval=sim_interval,
-                                               init_time=init_time)
+                                               init_time=init_time,
+                                               volume_multiply=volume_multiply)
         max_scene_time = max(max_scene_time,scene_info['scene_time'])
     return max_scene_time
 # 更新系统时间
@@ -192,9 +193,8 @@ def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int,player_info
 
 def run_setting()->None:
     def get_value()->None:
-        global sim_interval
+        global sim_interval,volume
         sim_interval, volume = sim_interval_list[int(scale1.get())], volume_list[int(scale2.get())]
-        pygame.mixer.music.set_volume(volume)
         root.destroy()
     init_pygame()
     with open('config.yml','r')as f:
@@ -204,7 +204,7 @@ def run_setting()->None:
     root.geometry("{}x{}".format(*CONFIG['screen_size']))
     sim_interval_list = CONFIG['sim_interval_list']
     sim_interval_list.reverse()
-    volume_list = [i*(CONFIG['max_volume']-CONFIG['min_volume'])/CONFIG['steps']+CONFIG['min_volume'] for i in range(CONFIG['steps'])]
+    volume_list = [i*(CONFIG['max_volume']-CONFIG['min_volume'])/CONFIG['steps']+CONFIG['min_volume'] for i in range(CONFIG['steps']+1)]
     try:
         sim_interval_index = sim_interval_list.index(sim_interval)
     except:
@@ -395,11 +395,11 @@ def run_game():
         pygame.display.flip()
     
     #开始游戏
-    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group,sim_interval)
+    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group,sim_interval,volume)
     player.game_set(gameset) # 使用该游戏设置
     player.blitme()
     pygame.display.flip()
-    max_scene_time = create_scene(player,background,player_info)
+    max_scene_time = create_scene(player,background,player_info,volume)
     now = pygame.time.get_ticks()
     init_time = now
     system_update_time()

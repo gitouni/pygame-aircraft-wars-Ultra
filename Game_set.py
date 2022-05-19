@@ -21,7 +21,7 @@ class game_set():
         self.bullet_ID = 0
         self.bullet_shooting_cd_level = 0
         self.missile_num_level = 0
-        self.missile_shooting_cd = 100
+        self.missile_shooting_cd = 300
         self.missile_damage_level = 0
         self.missile_actime_level = 0
         self.missile_flyingtime_level = 0
