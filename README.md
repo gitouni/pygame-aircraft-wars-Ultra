@@ -8,7 +8,7 @@ Pygame飞机大战终极版是一款基于Pygame引擎开发的，涵盖GUI界�
 
 *玩家状态：血条、能量和冷却
 
-*玩家奖励：黄金:moneybag:、钻石:rocket:
+*玩家奖励：黄金:moneybag:、钻石
 
 *玩家武器：子弹:gun:、导弹:rocket:
 
