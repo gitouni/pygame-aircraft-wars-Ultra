@@ -1,22 +1,29 @@
 # pygame飞机大战:airplane:终极版
-### Introduction
+### 介绍
 <img src="https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/a777c40a73c9d66d4d67f5e8e8d95e7cd44297b7/screenshots/ex1.jpg" width="300px">
-Aircraft wars - Ultra This project is developed with pygame engine. Some essential elements like interface, player, enemies and scoring system have been added with some special effects enhancement! Some exciting elements to show:
+Pygame飞机大战终极版是一款基于Pygame引擎开发的，涵盖GUI界面、账户系统、奖励系统、自定义场景、武器升级系统的炫酷飞机大战游戏。一些游戏元素:video_game:展示如下：
 
-Sound effect with attack, receiving attack and explode
+*射击音效，击中音效，爆炸音效，奖励音效
 
-Player status: HP, cooling, enenergy
+*玩家状态：血条、能量和冷却
 
-Player award: gold, dimaond, score
+*玩家奖励：黄金:moneybag:、钻石:rocket:
 
-Player weapon: missile, bullet
+*玩家武器：子弹:gun:、导弹:rocket:
 
-Enemy scene can be created by a GUI without any code!
+*实验室：可使用黄金、钻石升级，黄金用于基础升级，钻石是高等级提升时所需的升级材料
 
-Multiple customizable properties！
+*后续增设：
 
-More levels will appear in subsequent versions！
-### Get Start
+可自定义的地图/场景设计器 （根据scene.py进行书写）
+
+无限模式（会根据玩家的胜率自适应调整难度）
+
+符文系统（击落敌机会概率掉落功能性符文，可随武器系统一起升级）
+
+Boss机制（正在制作中，敬请期待）
+
+### 如何开始
 * Install:
 
 `pip install -r requirements.txt`
@@ -26,22 +33,23 @@ Python>=3.7.1 recommended
 
 `python main.py`
 
-### How to Play:
-* Operation:
+### 游戏玩法（中文版可点击右下角的帮助按钮查看）:
+* 操作:
 
-open/cease fire: F
+开火/停火: F
 
-fire more/less bullets: Q/W/E
+射击: Q/W/E
 
-launch missile (s): Space
+发射导弹:rocket:: Space
 
-Move: up/down/left/right
-* Note:
+移动: up/down/left/right
 
-State bar: HP, energy, cooling
+* 攻略:
 
-Create your account first (20000 gold, 200 diamond for initial resource) and use it to upgrade your spaceship in lab!
+首先创建你的账户（初始资源为2万金币，200钻石，快去实验室选择自己心仪的升级吧，注意保存之后不能撤销哦）
 
-Open fire and launch missile (s) all consume energy and cooling.
+状态栏：血条、能量、冷却
 
-Hope you enjoy it!
+开火和发射导弹均消耗能量和冷却，请合理搭配。
+
+玩得开心！
