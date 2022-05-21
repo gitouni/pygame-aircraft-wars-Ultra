@@ -22,19 +22,13 @@ interface:
     upgrade_grid: [[224,78],[224,125],[224,173],[224,219],[224,264],[224,311],[529,78],[529,125],[529,173],[529,219],[529,264],[529,311]]
 
 account:
-  background_img: background_jpg/b2.jpg
   refresh_sound_file: Sound_effect/refresh.wav
   upgrade_sound_file: Sound_effect/pay.wav
   save_sound_file: Sound_effect/ensure.wav
   error_sound_file: Sound_effect/error.wav
   exit_sound_file: Sound_effect/tip.wav
-  screen_size: [165,220]
-  button_size: [100,30]
-  create_pos: [60,40]
-  load_pos: [60,80]
-  button_color: "#FFFFFF"
-  initial_gold: 20000
-  initial_diamond: 200
+  initial_gold: 9999999
+  initial_diamond: 9999999
 
 main:
   background_img: background_jpg/b0.jpg
@@ -62,6 +56,7 @@ help:
   background_img: background_jpg/b1.jpg
   screen_size: [240,320]
   button_bg_color: "#2C3B35"
+  icon: icon_png/help.png
   help_operation_icon: icon_png/help_operation.png
   help_note_icon: icon_png/help_note.png
   help_operation_pos: [20,10]
@@ -74,12 +69,14 @@ help:
 
 set:
   sim_interval_list: [7.5,10,15,30] 
-  screen_size: [140,140]
+  screen_size: [200,100]
   steps: 20
   min_volume: 0
   max_volume: 1
+  icon: icon/setting.png
 
 setting:
+  font: 'times_new_roman'
   sim_interval: 15  # (ms)
   screen_size: [480,600]
   status_bar_size: [480,30]
@@ -87,9 +84,14 @@ setting:
   background_color: [0,0,0]
   bg_rollv: 18
   account_path: account/
-  scene_path: data/scene.json
+  scene_path: data/demo_scene.json
   success_sound_file: Sound_effect/mission_accomplished.wav
   fail_sound_file: Sound_effect/mission_failed.wav
+  default_ico: icon_png/fighter_icon.png
+  main_ico: icon/main.png
+  lab_ico: icon/engineering.png
+  game_ico: icon/game.ico
+  account_ico: icon/account.png
   fail_font_pos: [120,300]
   success_font_pos: [70,300]
 

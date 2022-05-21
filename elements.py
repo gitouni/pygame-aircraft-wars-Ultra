@@ -11,7 +11,7 @@ import os
 import yaml
 from numpy import clip,digitize,linspace,random
 from random import randint
-from math import sqrt,pi,cos,sin,atan2
+from math import sqrt,pi,cos,sin,atan2,exp
 import utils
 from Game_set import game_set
 import threading
@@ -120,7 +120,7 @@ class fighter(pygame.sprite.Sprite):
         self.bullet_ID = gameset.bullet_ID
         self.shooting_cd = gameset.player_shooting_cd_list[gameset.bullet_shooting_cd_level]
         self.missile_num = gameset.missile_num_list[gameset.missile_num_level]
-        self.launching_cd = gameset.missile_shooting_cd
+        self.launching_cd = gameset.missile_shooting_cd*exp(-self.missile_num/5)
         self.missile_damge = gameset.missile_damage_list[gameset.missile_damage_level]
         self.missile_actime = gameset.missile_actime_list[gameset.missile_actime_level]
         self.missile_speed_max = gameset.missile_speed_max_list[gameset.missile_actime_level]
@@ -206,8 +206,8 @@ class fighter(pygame.sprite.Sprite):
                 if self.energy > (self.shoot1+self.shoot2+self.shoot3) and self.cooling > 0: # 满足要求时保持射击
                     self.shoot() # 射击
                     self.update_shoot_time() # 更新时间
-                    self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3)/self.shooting_cd*100 # 消耗能量
-                    self.cooling -= (self.shoot1+0.5*self.shoot2+0.25*self.shoot3)/self.shooting_cd*100
+                    self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3)/self.shooting_cd*25 # 消耗能量
+                    self.cooling -= (self.shoot1)/self.shooting_cd*25
                 else:
                     self.shooting = False
         if self.launching:

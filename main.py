@@ -20,11 +20,11 @@ from elements import fighter
 import yaml
 import utils
 from scene import scene1,scene2
-from utils import Info
+from utils import Info, Setting
 # interface import
-from interface import run_lab, run_help
+from interface import run_lab, run_help, run_account
 import tkinter as tk
-from tkinter import messagebox, simpledialog, filedialog
+from tkinter import messagebox, simpledialog
 from PIL import Image,ImageTk
 import threading
 
@@ -128,7 +128,7 @@ def create_scene(player:fighter,background:pygame.Surface,player_info:Info,volum
                                                hook_enemy_group=enemy_Group,
                                                hook_enemyfire_group=enemyfire_Group,
                                                hook_background_group=background_Group,
-                                               sim_interval=sim_interval,
+                                               sim_interval=SIM_INTERVAL,
                                                init_time=init_time,
                                                volume_multiply=volume_multiply)
         max_scene_time = max(max_scene_time,scene_info['scene_time'])
@@ -193,8 +193,8 @@ def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int,player_info
 
 def run_setting()->None:
     def get_value()->None:
-        global sim_interval,volume
-        sim_interval, volume = sim_interval_list[int(scale1.get())], volume_list[int(scale2.get())]
+        global SIM_INTERVAL,VOLUME
+        SIM_INTERVAL, VOLUME = sim_interval_list[int(scale1.get())], volume_list[int(scale2.get())]
         root.destroy()
     init_pygame()
     with open('config.yml','r')as f:
@@ -202,15 +202,16 @@ def run_setting()->None:
     root = tk.Toplevel()
     root.title('设置')
     root.geometry("{}x{}".format(*CONFIG['screen_size']))
-    sim_interval_list = CONFIG['sim_interval_list']
+    root.iconphoto(False,tk.PhotoImage(file=CONFIG['icon']))
+    sim_interval_list = list(CONFIG['sim_interval_list'])
     sim_interval_list.reverse()
     volume_list = [i*(CONFIG['max_volume']-CONFIG['min_volume'])/CONFIG['steps']+CONFIG['min_volume'] for i in range(CONFIG['steps']+1)]
     try:
-        sim_interval_index = sim_interval_list.index(sim_interval)
+        sim_interval_index = sim_interval_list.index(SIM_INTERVAL)
     except:
         sim_interval_index = 0
     try:
-        volume_index = volume_list.index(volume)
+        volume_index = volume_list.index(VOLUME)
     except:
         volume_index = 0
     F1 = tk.Frame(root,borderwidth=1,highlightthickness=1)
@@ -219,8 +220,8 @@ def run_setting()->None:
     F2.pack(side='top')
     tk.Label(F1,text='低',font=('songti',10)).pack(side='left')
     tk.Label(F2,text='小',font=('songti',10)).pack(side='left')
-    scale1 = tk.Scale(F1,cursor='circle',label='游戏性',length=80,orient=tk.HORIZONTAL,showvalue=0,from_=0,to=len(sim_interval_list)-1,resolution=1)
-    scale2 = tk.Scale(F2,cursor='circle',label='音量',length=80,orient=tk.HORIZONTAL,showvalue=0,from_=0,to=len(volume_list)-1,resolution=1)
+    scale1 = tk.Scale(F1,cursor='circle',label='游戏性',length=120,orient=tk.HORIZONTAL,showvalue=0,from_=0,to=len(sim_interval_list)-1,resolution=1)
+    scale2 = tk.Scale(F2,cursor='circle',label='音量',length=120,orient=tk.HORIZONTAL,showvalue=0,from_=0,to=len(volume_list)-1,resolution=1)
     scale1.pack(side='left')
     scale2.pack(side='left')
     scale1.set(sim_interval_index)
@@ -229,61 +230,16 @@ def run_setting()->None:
     tk.Label(F2,text='大',font=('songti',10)).pack(side='left')
     root.protocol('WM_DELETE_WINDOW',get_value)
     root.mainloop()
-def run_account():
-    def create()->None:
-        global gameset
-        name = simpledialog.askstring('create','your new account name:')
-        if not name:
-            return
-        with open(os.path.join(account_path,name_fmt.format(name=name)),'w')as f:
-            json.dump(gameset.__dict__,f)
-        gameset.path = os.path.join(account_path,name_fmt.format(name=name))
-        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['exit_sound_file']),volume)).start()
-        root.destroy()
-    def load()->None:
-        global gameset
-        filepath = filedialog.askopenfilename(initialdir=account_path,filetypes=[('json files','*.json')])
-        if not filepath:
-            return
-        base_name = os.path.basename(filepath)
-        base_path = os.path.join(account_path,base_name)
-        with open(base_path,'r')as f:
-            gameset.__dict__ = json.load(f)
-        gameset.path = base_path
-        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['exit_sound_file']),volume)).start()
-        root.destroy()
-    name_fmt = '{name}.json'
-    with open('config.yml','r')as f:
-        CONFIG = yaml.load(f,yaml.SafeLoader)
-    account_path = CONFIG['setting']['account_path']
-    screen_size = CONFIG['account']['screen_size']
-    bg_img = CONFIG['account']['background_img']
-    button_size = CONFIG['account']['button_size']
-    create_pos = CONFIG['account']['create_pos']
-    load_pos = CONFIG['account']['load_pos']
-    os.makedirs(account_path,exist_ok=True)
-    if len(os.listdir(account_path))==0:
-        exist_account = False
-    else:
-        exist_account = True
-    root = tk.Toplevel()
-    root.geometry("{}x{}".format(*screen_size))
-    canvas = tk.Canvas(root,width=screen_size[0], height=screen_size[1],
-        bd=0, highlightthickness=0)
-    canvas.pack()
-    img = Image.open(bg_img)
-    photo = ImageTk.PhotoImage(img,size=screen_size)
-    canvas.create_image(0,0,anchor='nw',image=photo)
-    button1 = tk.Button(root,text='创建账户',font=('songti',14,'bold'),command=create,background=CONFIG['account']['button_color'])
-    button2 = tk.Button(root,text='加载账户',font=('songti',14,'bold'),command=load,background=CONFIG['account']['button_color'])
-    button1.pack()
-    button2.pack()
-    if not exist_account:
-        button2.config(state='disabled')
-    canvas.create_window(*create_pos,width=button_size[0],height=button_size[1],window=button1)
-    canvas.create_window(*load_pos,width=button_size[0],height=button_size[1],window=button2)
-    root.mainloop()
+    
+    
 
+def _run_lab():
+    global gameset,GLOBAL_SET
+    run_lab(gameset,GLOBAL_SET,VOLUME)
+
+def _run_account():
+    global gameset,GLOBAL_SET
+    run_account(gameset,GLOBAL_SET,VOLUME)
 
 def run_main():
     def quit_main():
@@ -303,7 +259,8 @@ def run_main():
     small_size = CONFIG['main']['small_button_size']
     account_path = CONFIG['setting']['account_path']
     root = tk.Tk()
-    root.title('Aircraft-War-Ultra')
+    root.title('菜单')
+    root.iconphoto(False,tk.PhotoImage(file=CONFIG['setting']['main_ico']))
     win_width, win_height = CONFIG['main']['screen_size']
     root.geometry('{:d}x{:d}'.format(win_width,win_height))
     canvas = tk.Canvas(root,height=win_height, width=win_width,
@@ -320,9 +277,9 @@ def run_main():
     start_icon = ImageTk.PhotoImage(start_icon)
     lab_icon = Image.open(CONFIG['main']['lab_icon']).resize(small_size)
     lab_icon = ImageTk.PhotoImage(lab_icon)
-    button0 = tk.Button(root,text='游戏账户',font=('songti',14,'bold'),command=run_account,background='white',image=account_icon,compound='left')
-    button1 = tk.Button(root,text='开始游戏',font=('songti',14,'bold'),command=run_game,background='yellow',image=start_icon,compound='left')
-    button2 = tk.Button(root,text='改造中心',font=('songti',14,'bold'),command=lambda set=gameset: run_lab(set),background='#8823BA',image=lab_icon,compound='left')
+    button0 = tk.Button(root,text='游戏账户',font=('heiti',14,'bold'),command=_run_account,background='white',image=account_icon,compound='left')
+    button1 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=run_game,background='white',image=start_icon,compound='left')
+    button2 = tk.Button(root,text='实验室',font=('heiti',14,'bold'),command=_run_lab,background='white',image=lab_icon,compound='left')
     button0.pack()
     button1.pack()
     button2.pack()
@@ -373,21 +330,22 @@ def run_game():
         if not start:
             return
     init_pygame()
+    GLOBAL_SET.has_saved = False
     player_info = Info(gameset.gold,gameset.diamond)
     player_info.has_success = False
     player_info.has_fail = False
     def failed():
-        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['setting']['fail_sound_file']),volume)).start()
+        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['setting']['fail_sound_file']),VOLUME)).start()
         
     def succeeded():
-        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['setting']['success_sound_file']),volume)).start()
+        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['setting']['success_sound_file']),VOLUME)).start()
             
     
     display_font = pygame.font.SysFont('arial', 40, bold=True)
     screen = pygame.display.set_mode(screen_size)
     background = pygame.Surface((gamescreen_size[0]+100,gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
-    pygame.display.set_caption("空中游侠")
-    
+    pygame.display.set_caption("pygmae-aircraft-ultra")
+    pygame.display.set_icon(pygame.image.load(CONFIG['setting']['game_ico']))
     # 渐变显示窗口
     for i in range(11):
         screen.fill(tuple([255*(1-i/10) for _ in screen_bg_color]))
@@ -395,11 +353,11 @@ def run_game():
         pygame.display.flip()
     
     #开始游戏
-    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group,sim_interval,volume)
+    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group,SIM_INTERVAL,VOLUME)
     player.game_set(gameset) # 使用该游戏设置
     player.blitme()
     pygame.display.flip()
-    max_scene_time = create_scene(player,background,player_info,volume)
+    max_scene_time = create_scene(player,background,player_info,VOLUME)
     now = pygame.time.get_ticks()
     init_time = now
     system_update_time()
@@ -408,7 +366,7 @@ def run_game():
         # 监视屏幕
         running = event_check(player)
         # 让最近绘制的屏幕可见
-        if(pygame.time.get_ticks()-now > sim_interval): 
+        if(pygame.time.get_ticks()-now > SIM_INTERVAL): 
             now = pygame.time.get_ticks()
             blit_ad = int((now-init_time)/1000*bg_rollv % bg_resize[1])
             background.blit(background_img,(0,blit_ad-bg_resize[1]+30))
@@ -455,9 +413,6 @@ def quit_game():
     scene_time.clear()   
 
 
-# 运行改装中心界面
-#def run_lab_interface():
-#    
 # 运行游戏
 if __name__ == "__main__":
 
@@ -465,18 +420,19 @@ if __name__ == "__main__":
         CONFIG = yaml.load(f,yaml.SafeLoader)
     
     gameset = game_set() # 游戏设置类
+    GLOBAL_SET = Setting()
     gameset.gold = CONFIG['account']['initial_gold']
     gameset.diamond = CONFIG['account']['initial_diamond']
     with open(CONFIG['setting']['scene_path'],'r')as f:
-        scenes = json.load(f)
+        scenes = json.load(f)['scene']
 
     running = True
     screen_size = CONFIG['setting']['screen_size'] # 完整屏幕的分辨率
     statebar_size = CONFIG['setting']['status_bar_size'] # 状态栏分辨率
     gamescreen_size = CONFIG['setting']['gamescreen_size']
     screen_bg_color = CONFIG['setting']['background_color']
-    sim_interval = CONFIG['setting']['sim_interval']
-    volume = 1.0
+    SIM_INTERVAL = CONFIG['setting']['sim_interval']
+    VOLUME = 1.0
     enemy_path = CONFIG['enemy']['path']
     enemyfire_path = CONFIG['enemyfire']['path']
     bullet_path = CONFIG['bullet']['path']

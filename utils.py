@@ -7,6 +7,7 @@ import time
 import yaml
 import re
 from math import sqrt,cos,sin
+import os
 
 with open("config.yml",'r')as f:
     SETTING = yaml.load(f,yaml.SafeLoader)['setting']
@@ -25,6 +26,10 @@ class Info:
             if gold is not None: self.gold = gold
             if diamond is not None: self.diamond = diamond
             if score is not None: self.score = score
+
+class Setting:
+    def __init__(self):
+        self.has_saved = True
 
 # 元组差           
 def tuple_minus(a,b):           
@@ -168,3 +173,17 @@ def thread_play_music(filename,volume=None,duration=None):
     
 def extract_type(filename_list:list,type='a',pattern:str='[_]\w*[.]'):
     return [index for index in range(len(filename_list)) if re.search(pattern,filename_list[index]) and type in re.search(pattern,filename_list[index]).group()]
+
+def account_sort(account_path:str)->list:
+    account_file = os.listdir(account_path)
+    if len(account_file)>0:
+        account_time = []
+        for file in account_file:
+            fullpath = os.path.join(account_path,file)
+            filetime = os.path.getmtime(fullpath)
+            account_time.append(filetime)
+        account_tuple = list(zip(account_file,account_time))
+        recent_file = sorted(account_tuple,key=lambda ele: ele[1],reverse=True)
+        return [item[0] for item in recent_file]
+    else:
+        return []

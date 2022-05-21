@@ -2,7 +2,7 @@ import pygame
 import pygame.mixer
 import pygame.font
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, simpledialog
 import threading
 import os
 from PIL import Image,ImageTk
@@ -10,7 +10,7 @@ import yaml
 from copy import deepcopy
 from Game_set import game_set
 import utils
-
+import json
 
 def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
     img = Image.open(file).resize(size)
@@ -40,6 +40,7 @@ def run_help():
         help_note_txt = ''.join(f.readlines())
     root.geometry("{}x{}".format(win_width,win_height))
     root.title('帮助')
+    root.iconphoto(False,tk.PhotoImage(file=CONFIG['icon']))
     canvas = tk.Canvas(root,height=win_height, width=win_width,
         bd=0, highlightthickness=0)
     canvas.pack()
@@ -59,7 +60,111 @@ def run_help():
     canvas.create_window(*CONFIG['help_note_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=note_button)
     root.mainloop()
 
-def run_lab(gameset:game_set):
+
+
+def run_account(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
+    def create()->None:
+        nonlocal gameset
+        if not globalset.has_saved:
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
+            res = messagebox.askyesno('提示',"检测到账户存在修改,\n创建会覆盖现有账户,是否仍然创建？")
+            if not res:
+                return
+        name = simpledialog.askstring('创建','创建账户 (使用非英文字符可能导致错误):')
+        if not name:
+            return
+        save_path = os.path.join(account_path,name_fmt.format(name=name))
+        if os.path.exists(save_path):
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
+            res = messagebox.askyesno('提示',"该账户已存在, 是否覆盖？")
+            if not res:
+                return
+        with open(save_path,'w')as f:
+            json.dump(gameset.__dict__,f)
+        newset = game_set()
+        gameset.__dict__ = deepcopy(newset.__dict__)
+        gameset.gold = CONFIG['account']['initial_gold']
+        gameset.diamond = CONFIG['account']['initial_diamond']
+        gameset.path = os.path.join(account_path,name_fmt.format(name=name))
+        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['exit_sound_file']),volume)).start()
+        messagebox.showinfo("提示","账户创建完成, 请利用初始资源去实验室升级吧!")
+        root.destroy()
+    def load(event=None)->None:
+        nonlocal gameset
+        if not globalset.has_saved:
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
+            res = messagebox.askyesno('提示',"检测到账户存在修改,\n加载会覆盖现有账户,是否仍然加载？")
+            if not res:
+                return
+        account_index = account_listbox.curselection()
+        if not account_index:
+            messagebox.showwarning('提示','未选中任何账户！')
+            return
+        filepath = os.path.join(account_path,accounts[account_index[0]])
+        with open(filepath,'r')as f:
+            gameset.__dict__ = json.load(f)
+        gameset.path = filepath
+        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
+        messagebox.showinfo('提示','加载成功!')
+        root.destroy()
+    def save()->None:
+        nonlocal globalset
+        globalset.has_saved = True
+        account_index = account_listbox.curselection()
+        if not account_index:
+            messagebox.showwarning('提示','未选中任何账户！')
+            return
+        if account_index[0] != cur_index:
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
+            res = messagebox.askyesno('警告',"即将保存到冲突用户,\n是否继续？")
+            if not res:
+                return
+        filepath = os.path.join(account_path,accounts[account_index[0]])
+        with open(filepath,'w')as f:
+            gameset.path = filepath
+            json.dump(gameset.__dict__,f)
+        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
+        messagebox.showinfo('提示','保存成功！')
+    name_fmt = '{name}.json'
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)
+    account_path = CONFIG['setting']['account_path']
+    os.makedirs(account_path,exist_ok=True)
+    if len(os.listdir(account_path))==0:
+        exist_account = False
+    else:
+        exist_account = True
+    root = tk.Toplevel()
+    root.title('账户')
+    root.iconphoto(True,tk.PhotoImage(file=CONFIG['setting']['account_ico']))
+    F1 = tk.Frame(root,borderwidth=1,highlightthickness=1,name='操作')
+    F1.pack(side=tk.TOP)
+    F2 = tk.Frame(root,borderwidth=1,highlightthickness=1,name='账户列表')
+    F2.pack(side=tk.BOTTOM)
+    button1 = tk.Button(F1,text='创建',font=('songti',12),command=create)
+    button2 = tk.Button(F1,text='加载',font=('songti',12),command=load)
+    button3 = tk.Button(F1,text='存档',font=('songti',12),command=save)
+    button1.pack(side=tk.LEFT,padx=10)
+    button2.pack(side=tk.LEFT,padx=10)
+    button3.pack(side=tk.RIGHT,padx=10)
+    account_scbar = tk.Scrollbar(F2, orient=tk.VERTICAL)
+    account_listbox = tk.Listbox(F2,yscrollcommand=account_scbar.set,
+                                 selectmode=tk.SINGLE,width=23,height=8,
+                                 font=(CONFIG['setting']['font'],12))
+    account_listbox.bind("<Double-Button-1>",load)
+    account_scbar.config(command=account_listbox.yview)
+    account_scbar.pack(side=tk.RIGHT,fill=tk.Y)
+    account_listbox.pack(fill=tk.BOTH)
+    if not exist_account:
+        button2.config(state='disabled')
+    accounts = utils.account_sort(account_path)
+    cur_index = accounts.index(os.path.basename(gameset.path))
+    for account in accounts:
+        account_listbox.insert(tk.END,os.path.splitext(account)[0])
+    account_listbox.selection_set(cur_index)
+    root.mainloop()
+
+def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
     gameset_copy = game_set()
@@ -113,26 +218,31 @@ def run_lab(gameset:game_set):
     def upgrade_error():
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(config['error_sound_file']),1)).start()
     def save():
-        nonlocal gameset
+        nonlocal gameset,globalset
         gameset.__dict__ = deepcopy(gameset_copy.__dict__)
+        globalset.has_saved = False
         threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1,1.0)).start()
-    def print_coord(event:tk.Event):
-        print(f"({event.x},{event.y})")
+    
+    # for debugging
+    # def print_coord(event:tk.Event):
+    #     print(f"({event.x},{event.y})")
     
         
     def on_closing():
-        nonlocal gameset_copy
+        nonlocal gameset
         if gameset.__dict__ != gameset_copy.__dict__:
             threading.Thread(target=utils.thread_play_music,args=(config['exit_sound_file'],1,2.0)).start()
             if messagebox.askyesno("提示", "未保存，是否退出?"):
                 root.destroy()
         else:
             root.destroy()
+            
     if not pygame.get_init():
         pygame.init()  # 初始化背景设置
         pygame.font.init() # 初始化字体设置
         pygame.mixer.init(11025)  # 音乐初始化
-        pygame.mixer.music.set_volume(8)  # 音量初始化
+        pygame.mixer.music.set_volume(volume)  # 音量初始化
+        
     config = CONFIG['interface']
     icon_config = CONFIG['icon']
     root = tk.Toplevel()
@@ -140,6 +250,7 @@ def run_lab(gameset:game_set):
     # root.bind("<Button-1>",print_coord) # for debug
     win_width, win_height = config['lab_screen_size']
     root.geometry('{:d}x{:d}'.format(win_width,win_height))
+    root.iconphoto(True,tk.PhotoImage(file=CONFIG['setting']['lab_ico']))
     img = Image.open(config['lab_img'])
     img = img.resize((win_width, win_height),Image.BICUBIC)
     photo = ImageTk.PhotoImage(img)
@@ -211,11 +322,11 @@ def run_lab(gameset:game_set):
         canvas.create_window(*consume_diamond_value_grid[index],anchor='nw',width=consume_diamond_size[0],height=consume_diamond_size[1],window=consume_diamond_label)
         canvas.create_window(*config['lab_grid']['level_grid'][index],anchor='nw',width=level_size[0],height=level_size[1],window=level_label)
         canvas.create_window(*config['lab_grid']['upgrade_grid'][index],anchor='nw',width=button_size[0],height=button_size[1],window=button)
-    refresh_button = tk.Button(root,text='重置',font=('kaiti',12),background=config['lab_grid']['button_color'],
+    refresh_button = tk.Button(root,text='重置',font=('songti',12),background=config['lab_grid']['button_color'],
                                foreground='yellow',image=refresh_icon,compound='left',
                                command=refresh)
     refresh_button.pack()
-    save_button = tk.Button(root,text='保存',font=('kaiti',12),background=config['lab_grid']['button_color'],
+    save_button = tk.Button(root,text='保存',font=('songti',12),background=config['lab_grid']['button_color'],
                                foreground='yellow',image=save_icon,compound='left',
                                command=save)
     save_button.pack()
