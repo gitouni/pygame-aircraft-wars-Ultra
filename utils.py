@@ -30,7 +30,22 @@ class Info:
 class Setting:
     def __init__(self):
         self.has_saved = True
+        self.background_jpg = 'background_jpg/img_bg_3.jpg'
+        self.scenes = []
+        self.info = ""
 
+
+
+def pretty_number(num:int)->str:
+    if num>1E12:
+        return "{:.1f}T".format(num/1E12)
+    elif num>1E9:
+        return "{:.1f}G".format(num/1E9)
+    elif num>1E6:
+        return "{:.1f}M".format(num/1E6)
+    elif num>1E3:
+        return "{:.1f}K".format(num/1E3)
+    return str(num)
 # 元组差           
 def tuple_minus(a,b):           
     return tuple([ax-bx for ax,bx in zip(a,b)])
@@ -187,3 +202,34 @@ def account_sort(account_path:str)->list:
         return [item[0] for item in recent_file]
     else:
         return []
+    
+def scene_statics(scene_list:list)->dict:
+    num_dict = dict(scene1=0,scene2=0,e=0,ea=0,eax=0,eb=0,max_speed=0,max_bullet_speed=0)
+    for scene in scene_list:
+        if scene['type'] == 'scene1':
+            num_dict['scene1'] += 1
+            if 'ax' in scene['enemy_id']:
+                num_dict['eax'] += scene['enemy_num']
+            elif 'a' in scene['enemy_id']:
+                num_dict['ea'] += scene['enemy_num']
+            elif 'b' in scene['enemy_id']:
+                num_dict['eb'] += scene['enemy_num']
+            else:
+                num_dict['e'] += scene['enemy_num']
+            num_dict['max_speed'] = max(scene['enemy_speed'],num_dict['max_speed'])
+            num_dict['max_bullet_speed'] = max(scene['bullet_speed'],num_dict['max_bullet_speed'])
+            
+        elif scene['type'] == 'scene2':
+            num_dict['scene2'] += 1
+            if 'ax' in scene['enemy_id']:
+                num_dict['eax'] += 1
+            elif 'a' in scene['enemy_id']:
+                num_dict['ea'] += 1
+            elif 'b' in scene['enemy_id']:
+                num_dict['eb'] += 1
+            else:
+                num_dict['e'] += 1
+            num_dict['max_speed'] = max(scene['enemy_speed'],num_dict['max_speed'])
+            num_dict['max_bullet_speed'] = max(scene['bullet_speed'],num_dict['max_bullet_speed'])
+    return num_dict
+

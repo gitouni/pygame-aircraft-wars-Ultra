@@ -93,10 +93,11 @@ class scene1():
     def __init__(self,myscreen:pygame.Surface,t0,enemy_num,enemy_ID,bullet_speed,bullet_ID,speed,PointList,dt,bullet_target,
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
-                 hook_background_group:pygame.sprite.Group,sim_interval:float,init_time:int):
+                 hook_background_group:pygame.sprite.Group,sim_interval:float,init_time:int,volume_multiply:float=1.0):
         self.sim_interval = sim_interval
         speed *= sim_interval/10.0
         self.screen = myscreen
+        self.volume_multiply = volume_multiply
         self.N = enemy_num # 场景初始敌机数
         self.t0 =t0
         self.PointList = PointList
@@ -112,7 +113,7 @@ class scene1():
         self.need_to_end = False
         self.started = False
         self.init_time = init_time   
-        self.bullet_speed = bullet_speed * sim_interval/30.0
+        self.bullet_speed = bullet_speed
         self.bullet_ID = bullet_ID
         self.bullet_target = bullet_target
         self.speed = speed
@@ -120,7 +121,7 @@ class scene1():
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
         for i in range(self.N):
             enemy0 = enemy(self.screen,self.enemy_ID,self.PointList[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
-                           self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,sim_interval)
+                           self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,sim_interval,self.volume_multiply)
             enemy0.data = [0,0,len(self.path),i] 
             '''
             data[0]:敌机目前处在的最小分段点
@@ -191,7 +192,7 @@ class scene1():
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
                hook_background_group:pygame.sprite.Group,sim_interval:float,
-               init_time=pygame.time.get_ticks()):
+               init_time=pygame.time.get_ticks(),volume_multiply:float=1.0):
         assert cls_info['type'] == 'scene1', "types of scene_info and scene dont't fit"
         cnt = dict(type='scene1',
                     point_list=[[0.5, -0.2],[0.5,1.2]],
@@ -223,7 +224,7 @@ class scene1():
                        hook_player=hook_player,
                        hook_background_group=hook_background_group,
                        sim_interval=sim_interval,
-                       init_time=init_time)
+                       init_time=init_time,volume_multiply=volume_multiply)
         scene_list.append(scene)
         scene_time.append(cnt['scene_time'])
         
@@ -244,9 +245,10 @@ class scene2():
                  hook_global_info:utils.Info,hook_enemyfire_group:pygame.sprite.Group,
                  hook_player:fighter,hook_enemy_group:pygame.sprite.Group,
                  hook_background_group:pygame.sprite.Group,sim_interval:float,
-                 init_time:int=0,wait_time:float=0.5):
+                 init_time:int=0,wait_time:float=0.5,volume_multiply:float=1.0):
         init_speed *= sim_interval/10.0
         speed *= sim_interval/10.0
+        self.volume_multiply = volume_multiply
         self.screen = myscreen
         self.sim_interval = sim_interval
         self.enemy_ID = enemy_ID
@@ -287,7 +289,7 @@ class scene2():
         
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
         self.enemy = enemy(self.screen,self.enemy_ID,self.path[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
-                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,self.sim_interval)
+                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,self.sim_interval,self.volume_multiply)
         self.enemy.data = [0,0,len(self.path),0] 
         '''
         data[0]:敌机目前处在的最小（直线）分段点
@@ -316,7 +318,7 @@ class scene2():
         if not self.need_to_end:
             if self.enemy.time - self.init_time >= self.wait_time*1000:
                 self.enemy.need_to_move = True
-            if self.enemy.data[0] >= self.enemy.data[2] - 1:
+            if self.enemy.data[0] >= self.enemy.data[2] - 2:
                 self.enemy.need_to_remove = True
 
         # 对场景中的敌人进行移动
@@ -326,7 +328,7 @@ class scene2():
                 self.enemy.data[1] += 1
                 self.enemy.rotate(self.speed_dir[self.enemy.data[1]],rotate_img=False)
             self.enemy.move_to(self.path[self.enemy.data[0]])
-            if self.shoot_start_index <= self.enemy.data[0] <= self.shoot_end_index: # 位于循环轨迹才发射子弹
+            if self.shoot_start_index <= self.enemy.data[0] < self.shoot_end_index: # 位于循环轨迹才发射子弹
                 self.enemy.speed_value = self.speed
                 if self.bullet_cnt < self.bullet_break_cnt:
                     if self.enemy.time-self.init_time > self.bullet_cd*1000:
@@ -359,7 +361,7 @@ class scene2():
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
                hook_background_group:pygame.sprite.Group,sim_interval:float,
-               init_time=pygame.time.get_ticks()):
+               init_time=pygame.time.get_ticks(),volume_multiply:float=1.0):
         assert cls_info['type'] == 'scene2', "types of scene_info and scene dont't fit"
         cnt =  dict(type='scene2',
                     point_list=[[0.5, 0.1], [0.45, 0.11], [0.41, 0.12], [0.38, 0.13], [0.35, 0.15], [0.34, 0.17], [0.36, 0.2], [0.39, 0.21], [0.43, 0.22], [0.48, 0.22], [0.52, 0.21], [0.56, 0.19], [0.6, 0.17], [0.6, 0.15], [0.56, 0.14], [0.52, 0.13], [0.48, 0.13], [0.43, 0.13], [0.39, 0.13], [0.36, 0.15], [0.35, 0.17], [0.37, 0.19], [0.42, 0.19], [0.47, 0.19], [0.5, 0.17], [0.52, 0.15], [0.5, 0.13], [0.45, 0.13], [0.42, 0.14], [0.4, 0.16], [0.41, 0.18], [0.44, 0.18], [0.48, 0.19], [0.53, 0.18], [0.56, 0.17], [0.58, 0.15], [0.59, 0.12], [0.56, 0.11], [0.51, 0.11]],
@@ -399,6 +401,7 @@ class scene2():
                        sim_interval=sim_interval,
                        init_time=init_time,
                        wait_time=cnt['wait_time'],
+                       volume_multiply=volume_multiply
                        )
         scene_list.append(scene)
         scene_time.append(cnt['scene_time'])

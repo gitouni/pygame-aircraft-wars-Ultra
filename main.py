@@ -22,7 +22,8 @@ import utils
 from scene import scene1,scene2
 from utils import Info, Setting
 # interface import
-from interface import run_lab, run_help, run_account
+import interface
+from interface import run_lab, run_help, run_account, run_scene_loading
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 from PIL import Image,ImageTk
@@ -122,7 +123,7 @@ def scene_check(now):
 
 def create_scene(player:fighter,background:pygame.Surface,player_info:Info,volume_multiply:float=1.0):
     max_scene_time = 0
-    for scene_info in scenes:
+    for scene_info in GLOBAL_SET.scenes:
         scene_class[scene_info['type']].create(scene_info,scene_list,scene_time,background,
                                                hook_player=player,hook_global_info=player_info,
                                                hook_enemy_group=enemy_Group,
@@ -147,7 +148,7 @@ def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int,player_info
     # 图标参数
     icon_size = (20,20) # 小图标大小
     
-    icon_pos = [(5,5),(65,5),(125,5),(185,2),(275,2)] # icon的topleft坐标
+    icon_pos = [(5,5),(65,5),(125,5),(185,2),(260,2)] # icon的topleft坐标
     
     icon_list = list()
     img = pygame.image.load('icon_png/heart.png')
@@ -182,19 +183,20 @@ def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int,player_info
     diamond_font = pygame.font.SysFont('arial', 15, bold=True)
     score_font = pygame.font.SysFont('arial', 15, bold=True,italic=True)
     time_font = pygame.font.SysFont('arial',15,bold=True)
-    gold_font_surface = gold_font.render(f":{player_info.gold}",True,[255,255,255])
-    diamond_font_surface = diamond_font.render(f":{player_info.diamond}",True,[255,255,255])
-    score_font_surface = score_font.render(f"{player_info.score}",True,[180,255,255])
+    gold_font_surface = gold_font.render(utils.pretty_number(player_info.gold),True,[255,255,255])
+    diamond_font_surface = diamond_font.render(utils.pretty_number(player_info.diamond),True,[255,255,255])
+    score_font_surface = score_font.render(utils.pretty_number(player_info.score),True,[180,255,255])
     time_font_surface = time_font.render("{:.2f}s".format((pygame.time.get_ticks()-init_time)/1000.0),True,[255,100,100])
     screen.blit(gold_font_surface,GOLD_POS)
     screen.blit(diamond_font_surface,DIAMOND_POS)
     screen.blit(score_font_surface,SCORE_POS)
     screen.blit(time_font_surface,TIME_POS)
 
-def run_setting()->None:
+def run_setting(info:tk.StringVar)->None:
     def get_value()->None:
         global SIM_INTERVAL,VOLUME
         SIM_INTERVAL, VOLUME = sim_interval_list[int(scale1.get())], volume_list[int(scale2.get())]
+        info.set('设置成功！')
         root.destroy()
     init_pygame()
     with open('config.yml','r')as f:
@@ -237,19 +239,24 @@ def _run_lab():
     global gameset,GLOBAL_SET
     run_lab(gameset,GLOBAL_SET,VOLUME)
 
-def _run_account():
+def _run_account(info:tk.StringVar):
     global gameset,GLOBAL_SET
-    run_account(gameset,GLOBAL_SET,VOLUME)
+    run_account(gameset,GLOBAL_SET,info,VOLUME)
+
+def _run_scene_loading(info:tk.StringVar):
+    global GLOBAL_SET
+    run_scene_loading(GLOBAL_SET,info)
+
 
 def run_main():
     def quit_main():
         quit_game()
         root.destroy()
 
-        
     SIGN_POS = CONFIG['main']['sign_pos']
     account_pos = CONFIG['main']['account_pos']
     play_pos = CONFIG['main']['start_pos']
+    normal_level_pos = CONFIG['main']['normal_level_pos']
     lab_pos = CONFIG['main']['lab_pos']
     welcome_pos = CONFIG['main']['welcome_pos']
     help_pos = CONFIG['main']['help_pos']
@@ -262,40 +269,48 @@ def run_main():
     root.title('菜单')
     root.iconphoto(False,tk.PhotoImage(file=CONFIG['setting']['main_ico']))
     win_width, win_height = CONFIG['main']['screen_size']
-    root.geometry('{:d}x{:d}'.format(win_width,win_height))
+    root.geometry('{:d}x{:d}'.format(win_width,win_height+10))
+    statustext = tk.StringVar() 
+    statustext.set( '未加载任何账户！' ) 
+    statusbar = tk.Label(root, textvariable=statustext,relief=tk.SUNKEN, anchor= 'w' )
+    statusbar.pack(side=tk.BOTTOM,fill=tk.X)
     canvas = tk.Canvas(root,height=win_height, width=win_width,
         bd=0, highlightthickness=0)
-    img = Image.open(CONFIG['main']['background_img']).resize((win_width,win_height))
-    photo = ImageTk.PhotoImage(img)
-    canvas.create_image(0,0,anchor='nw',image=photo)
+    bg_img = interface.Image_load(CONFIG['main']['background_img'],(win_width,win_height))
+    canvas.create_image(0,0,anchor='nw',image=bg_img)
     canvas.pack()
     sign_tx = canvas.create_text(*SIGN_POS,font=('arial',14,'bold'),anchor='nw',fill="white")
     canvas.insert(sign_tx,1,'Made by gitouni')
-    account_icon = Image.open(CONFIG['main']['account_icon']).resize((small_size))
-    account_icon = ImageTk.PhotoImage(account_icon)
-    start_icon = Image.open(CONFIG['main']['start_icon']).resize(small_size)
-    start_icon = ImageTk.PhotoImage(start_icon)
-    lab_icon = Image.open(CONFIG['main']['lab_icon']).resize(small_size)
-    lab_icon = ImageTk.PhotoImage(lab_icon)
-    button0 = tk.Button(root,text='游戏账户',font=('heiti',14,'bold'),command=_run_account,background='white',image=account_icon,compound='left')
-    button1 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=run_game,background='white',image=start_icon,compound='left')
-    button2 = tk.Button(root,text='实验室',font=('heiti',14,'bold'),command=_run_lab,background='white',image=lab_icon,compound='left')
+    account_icon = interface.Image_load(CONFIG['main']['account_icon'],small_size)
+    button0 = tk.Button(root,text='游戏账户',font=('heiti',14,'bold'),command=lambda info=statustext: _run_account(info),background='white',
+                        image=account_icon,compound='left')
+    normal_lvl_icon = interface.Image_load(CONFIG['main']['normal_level_icon'],small_size)
+    button1 = tk.Button(root,text='普通模式',font=('heiti',14,'bold'),command=lambda info=statustext: _run_scene_loading(info),background='white',
+                        image=normal_lvl_icon,compound='left')
+    start_icon = interface.Image_load(CONFIG['main']['start_icon'],small_size)
+    button2 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=run_game,background='white',
+                        image=start_icon,compound='left')
+    lab_icon = interface.Image_load(CONFIG['main']['lab_icon'],small_size)
+    button3 = tk.Button(root,text='实验室',font=('heiti',14,'bold'),command=_run_lab,background='white',
+                        image=lab_icon,compound='left')
     button0.pack()
     button1.pack()
     button2.pack()
+    button3.pack()
     help_img = Image.open(CONFIG['main']['help_icon']).resize(small_size)
     help_img = ImageTk.PhotoImage(help_img)
     setting_img = Image.open(CONFIG['main']['setting_icon']).resize(small_size)
     setting_img = ImageTk.PhotoImage(setting_img)
     help_button = tk.Button(root,bg=CONFIG['main']['help_color'],image=help_img,command=run_help)
-    setting_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=setting_img,command=run_setting)
+    setting_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=setting_img,command=lambda info=statustext: run_setting(info))
     help_button.pack()
     setting_button.pack()
     canvas.create_window(*help_pos,width=small_size[0],height=small_size[1],window=help_button)
     canvas.create_window(*setting_pos,width=small_size[0],height=small_size[1],window=setting_button)
     canvas.create_window(*account_pos,width=button_size[0],height=button_size[1],window=button0)
-    canvas.create_window(*play_pos,width=button_size[0],height=button_size[1],window=button1)
-    canvas.create_window(*lab_pos,width=button_size[0],height=button_size[1],window=button2)
+    canvas.create_window(*normal_level_pos,width=button_size[0],height=button_size[1],window=button1)
+    canvas.create_window(*play_pos,width=button_size[0],height=button_size[1],window=button2)
+    canvas.create_window(*lab_pos,width=button_size[0],height=button_size[1],window=button3)
     if os.path.exists(account_path):
         account_file = os.listdir(account_path)
         if len(account_file)>0:
@@ -308,9 +323,7 @@ def run_main():
             recent_file = sorted(account_tuple,key=lambda ele: ele[1],reverse=True)[0][0]
             gameset.load(os.path.join(account_path,recent_file))
             recent_name = os.path.splitext(recent_file)[0]
-            welcom_tx = canvas.create_text(*welcome_pos,font=('arial',12,'bold'),anchor='nw',fill=welcome_color)
-            canvas.insert(welcom_tx,1,f'Welcome back,{recent_name}!')
-
+            statustext.set("欢迎, {}".format(recent_name))
     root.protocol('WM_DELETE_WINDOW', quit_main)
     root.mainloop()
 
@@ -340,7 +353,8 @@ def run_game():
     def succeeded():
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['setting']['success_sound_file']),VOLUME)).start()
             
-    
+    background_img = pygame.image.load(GLOBAL_SET.background_jpg)  # 背景图片
+    background_img = pygame.transform.scale(background_img,bg_resize)
     display_font = pygame.font.SysFont('arial', 40, bold=True)
     screen = pygame.display.set_mode(screen_size)
     background = pygame.Surface((gamescreen_size[0]+100,gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
@@ -423,8 +437,6 @@ if __name__ == "__main__":
     GLOBAL_SET = Setting()
     gameset.gold = CONFIG['account']['initial_gold']
     gameset.diamond = CONFIG['account']['initial_diamond']
-    with open(CONFIG['setting']['scene_path'],'r')as f:
-        scenes = json.load(f)['scene']
 
     running = True
     screen_size = CONFIG['setting']['screen_size'] # 完整屏幕的分辨率
@@ -443,7 +455,7 @@ if __name__ == "__main__":
     enemy_names = [os.path.splitext(name)[0] for name in enemy_dict['filename']]
     special_enemyfire_id = [enemyfire_id for enemyfire_id in range(len(enemyfire_dict['filename'])) if 'a' in re.search('[_]\w*',enemyfire_dict['filename'][enemyfire_id]).group()]
     GOLD_POS = (210,5)
-    DIAMOND_POS = (300,5)
+    DIAMOND_POS = (285,5)
     SCORE_POS = (340,5)
     TIME_POS = (410,5)
     
@@ -453,7 +465,7 @@ if __name__ == "__main__":
     enemyfire_Group = pygame.sprite.Group() # 敌军的子弹群
     background_Group = pygame.sprite.Group() # 背景动画群
     
-    background_img = pygame.image.load(os.path.join("background_jpg","img_bg_1.jpg"))  # 背景图片
+    background_img = pygame.image.load(GLOBAL_SET.background_jpg)  # 背景图片
     bg_size = background_img.get_size()
     bg_resize = (screen_size[0],int(screen_size[0]/bg_size[0]*bg_size[1]))
     background_img = pygame.transform.scale(background_img,bg_resize)

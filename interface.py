@@ -6,6 +6,7 @@ from tkinter import messagebox, scrolledtext, simpledialog
 import threading
 import os
 from PIL import Image,ImageTk
+from sklearn.feature_selection import SequentialFeatureSelector
 import yaml
 from copy import deepcopy
 from Game_set import game_set
@@ -60,9 +61,116 @@ def run_help():
     canvas.create_window(*CONFIG['help_note_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=note_button)
     root.mainloop()
 
+def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
+    def load_json(index:int)->dict:
+        full_path = os.path.join(CONFIG['path'],scene_files[index])
+        with open(full_path,'r')as f:
+            scene_data = json.load(f)
+        return scene_data
+    
+    def load(event=None):
+        nonlocal globalset
+        index = listbox.curselection()
+        if len(index) == 0:
+            messagebox.showerror('提示','您未选中任何地图！')
+            return
+        index = index[0]
+        scene_data = load_json(index)
+        globalset.background_jpg = scene_data['meta']['background']
+        globalset.scenes = scene_data['scene']
+        messagebox.showinfo('提示','地图加载完成\n可返回主菜单开始游戏。')
+        info.set('地图加载完成!')
+        root.destroy()
+        
+    def rename():
+        index = listbox.curselection()
+        if len(index) == 0:
+            messagebox.showerror('提示','您未选中任何地图！')
+            return
+        index = index[0]
+        map_name = simpledialog.askstring('提示','键入地图名称（兼容中文）')
+        scene_data = load_json(index)
+        scene_data['meta']['name'] = map_name
+        with open(full_path,'w')as f:
+            json.dump(scene_data,f)
+        listbox.delete(index)
+        listbox.insert(index,'{:04d}-{}'.format(index,map_name))
+        statustext.set('重命名成功！')
+    
+    def preview(event=None):
+        nonlocal canvas,statustext,statusdetail,img
+        index = listbox.curselection()[0]
+        scene_data = load_json(index)
+        background_path = scene_data['meta']['background']
+        img = Image_load(background_path,CONFIG['background_size'])
+        canvas.create_image(0,0,anchor='nw',image=img)
+        num_dict = utils.scene_statics(scene_data['scene'])
+        head = "scene1:{} scene2:{}".format(num_dict['scene1'],num_dict['scene2'])
+        info = "e:{} ea:{} eax:{} eb:{}".format(
+            num_dict['e'],num_dict['ea'],num_dict['eax'],
+            num_dict['eb']
+        )
+        statustext.set(head)
+        statusdetail.set(info)
+        
+            
+    def on_closing():
+        root.destroy()
+    scene = []
+    root = tk.Toplevel()
+    root.title('普通模式')
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)['map']
+    root.iconphoto(True,tk.PhotoImage(file=CONFIG['icon']))
+    root.geometry('{}x{}'.format(*CONFIG['window_size']))
+    scene_files = list(sorted(os.listdir(CONFIG['path'])))
+    statustext = tk.StringVar() 
+    statustext.set( '未检测到任何操作。' ) 
+    statusdetail = tk.StringVar()
+    statusdetail.set('')
+    statusbar = tk.Label(root, textvariable=statustext,relief=tk.SUNKEN, anchor= 'w')
+    statusbar_detail = tk.Label(root, textvariable=statusdetail,relief=tk.SUNKEN, anchor= 'w',foreground='blue')
+    statusbar_detail.pack(side=tk.BOTTOM,fill=tk.X)
+    statusbar.pack(side=tk.BOTTOM,fill=tk.X)
+    F1 = tk.Frame(root)
+    F1.pack(side=tk.LEFT)
+    F2 = tk.Frame(root)
+    F2.pack(side=tk.RIGHT)
+    F11 = tk.Frame(F1)
+    F11.pack(side=tk.TOP)
+    F12 = tk.Frame(F1)
+    F12.pack(side=tk.BOTTOM)
+    button1 = tk.Button(F11,text='加载',font=('songti',12),command=load)
+    button2 = tk.Button(F11,text='重命名',font=('songti',12),command=rename)
+    button3 = tk.Button(F11,text='返回',font=('songti',12),command=on_closing)
+    button1.pack(side='left',padx=5)
+    button2.pack(side='left',padx=5)
+    button3.pack(side='right',padx=5)
+    scbar = tk.Scrollbar(F12, orient=tk.VERTICAL)
+    listbox = tk.Listbox(F12,yscrollcommand=scbar.set,
+                                 selectmode=tk.SINGLE,width=23,height=15,
+                                 font=('songti',12))
+    listbox.bind("<Double-Button-1>",load)
+    listbox.bind("<<ListboxSelect>>",preview)
+    scbar.config(command=listbox.yview)
+    scbar.pack(side=tk.RIGHT,fill=tk.Y)
+    listbox.pack(fill=tk.BOTH)
+    for i,file in enumerate(scene_files,start=1):
+        full_path = os.path.join(CONFIG['path'],file)
+        with open(full_path,'r')as f:
+            scene = json.load(f)
+        listbox.insert(tk.END,"{index:04d}-{name}".format(index=i,name=scene['meta']['name']))
+    listbox.selection_set(0)
+    canvas = tk.Canvas(F2,width=CONFIG['canvas_size'][0],height=CONFIG['canvas_size'][1])
+    canvas.pack()
+    scene_data = load_json(0)
+    background_path = scene_data['meta']['background']
+    img = Image_load(background_path,CONFIG['background_size'])
+    canvas.create_image(0,0,anchor='nw',image=img)
+    root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.mainloop()
 
-
-def run_account(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
+def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volume:float=1.0):
     def create()->None:
         nonlocal gameset
         if not globalset.has_saved:
@@ -88,6 +196,7 @@ def run_account(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         gameset.path = os.path.join(account_path,name_fmt.format(name=name))
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['exit_sound_file']),volume)).start()
         messagebox.showinfo("提示","账户创建完成, 请利用初始资源去实验室升级吧!")
+        info.set('欢迎体验本游戏，{}'.format(name))
         root.destroy()
     def load(event=None)->None:
         nonlocal gameset
@@ -100,12 +209,15 @@ def run_account(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         if not account_index:
             messagebox.showwarning('提示','未选中任何账户！')
             return
-        filepath = os.path.join(account_path,accounts[account_index[0]])
+        account_index = account_index[0]
+        account = accounts[account_index]
+        filepath = os.path.join(account_path,account)
         with open(filepath,'r')as f:
             gameset.__dict__ = json.load(f)
         gameset.path = filepath
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
         messagebox.showinfo('提示','加载成功!')
+        info.set("欢迎回来，{}".format(os.path.splitext(account)[0]))
         root.destroy()
     def save()->None:
         nonlocal globalset
@@ -125,6 +237,13 @@ def run_account(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
             json.dump(gameset.__dict__,f)
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
         messagebox.showinfo('提示','保存成功！')
+    def on_closing()->None:
+        nonlocal info
+        if gameset.path:
+            info.set("欢迎回来，{}".format(os.path.splitext(os.path.basename(gameset.path))[0]))
+        else:
+            info.set("未加载任何账户！")
+        root.destroy()
     name_fmt = '{name}.json'
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
@@ -162,6 +281,7 @@ def run_account(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     for account in accounts:
         account_listbox.insert(tk.END,os.path.splitext(account)[0])
     account_listbox.selection_set(cur_index)
+    root.protocol('WM_DELETE_WINDOW',on_closing)
     root.mainloop()
 
 def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
@@ -181,8 +301,8 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         threading.Thread(target=utils.thread_play_music,args=(config['refresh_sound_file'],1,1.0)).start()
         flash()
     def flash():
-        gold_label.config(text=str(gameset_copy.gold))
-        diamond_label.config(text=gameset_copy.diamond)
+        gold_label.config(text=utils.pretty_number(gameset_copy.gold))
+        diamond_label.config(text=utils.pretty_number(gameset_copy.diamond))
         for index, (consume_gold_label,consume_diamond_label,level_label) in enumerate(zip(gold_label_list,diamond_label_list,level_label_list)):
             level = gameset_copy.__dict__[level_keys[index]]
             gold_key = gold_consume_keys[index]
@@ -276,8 +396,8 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     canvas.create_image(*config['lab_grid']['gold_icon'],anchor='nw',image=gold_ico)
     canvas.create_image(*config['lab_grid']['diamond_icon'],anchor='nw',image=diamond_ico)
     consume_gold_icon_grid = config['lab_grid']['consume_grid']
-    gold_value = str(gameset_copy.gold)
-    diamond_value = str(gameset_copy.diamond)
+    gold_value = gameset_copy.gold
+    diamond_value = gameset_copy.diamond
     consume_gold_size = (50,12)
     consume_diamond_size = (40,12)
     level_size = (25,12)
@@ -294,13 +414,13 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     for gold_icon_coord,diamond_icon_coord in zip(consume_gold_icon_grid,consume_diamond_icon_grid):
         canvas.create_image(*gold_icon_coord,anchor='nw',image=small_gold_ico)
         canvas.create_image(*diamond_icon_coord,anchor='nw',image=small_diamond_ico)
-    gold_label = tk.Label(root,text=gold_value,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'],justify='left')
-    diamond_label = tk.Label(root,text=diamond_value,fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'],justify='left')
+    gold_label = tk.Label(root,text=utils.pretty_number(gold_value),fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'],justify='left')
+    diamond_label = tk.Label(root,text=utils.pretty_number(diamond_value),fg='yellow',font=('arial',12),background=config['lab_grid']['background_color'],justify='left')
     gold_label.pack()
     diamond_label.pack()
     
-    canvas.create_window(*config['lab_grid']['gold_value'],anchor='nw',width=60,height=20,window=gold_label)
-    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=45,height=20,window=diamond_label)
+    canvas.create_window(*config['lab_grid']['gold_value'],anchor='nw',width=65,height=20,window=gold_label)
+    canvas.create_window(*config['lab_grid']['diamond_value'],anchor='nw',width=65,height=20,window=diamond_label)
     for index in range(len(gold_consume_keys)):
         level = gameset_copy.__dict__[level_keys[index]]
         gold_key = gold_consume_keys[index] 

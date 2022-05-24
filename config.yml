@@ -13,8 +13,8 @@ interface:
     button_color: "#448856"
     gold_icon: [15,45]
     gold_value: [40,47]
-    diamond_icon: [110,45]
-    diamond_value: [135,47]
+    diamond_icon: [115,45]
+    diamond_value: [140,47]
     refresh_icon: [265,20]
     save_icon: [265,45]
     consume_grid: [[64,91],[64,139],[64,185],[64,231],[64,275],[64,323],[364,91],[364,139],[364,185],[364,231],[364,275],[364,323]]
@@ -27,8 +27,26 @@ account:
   save_sound_file: Sound_effect/ensure.wav
   error_sound_file: Sound_effect/error.wav
   exit_sound_file: Sound_effect/tip.wav
-  initial_gold: 9999999
-  initial_diamond: 9999999
+  initial_gold: 20000
+  initial_diamond: 0
+
+map:
+  path: scenes/
+  icon: icon/database.png
+  canvas_size: [240,240]
+  window_size: [360,280]
+  background_size: [120,240]
+  png:
+    enemy: enemy_png/e5.png
+    enemy_a: enemy_png/ea1.png
+    enemy_ax: enemy_png/eax0.png 
+    enemy_b: enemy_png/eb0.png
+  size:
+    enemy: [10,10]
+    enemy_a: [20,20]
+    enemy_ax: [30,30]
+    enemy_b: [50,50]
+
 
 main:
   background_img: background_jpg/b0.jpg
@@ -38,9 +56,11 @@ main:
   sign_pos: [10,250]
   account_pos: [115,55]
   account_icon: icon_png/account_interface.png
-  start_pos: [115,95]
+  normal_level_pos: [115,95]
+  normal_level_icon: icon/database.png
+  start_pos: [115,135]
   start_icon: icon_png/play_interface.png
-  lab_pos: [115,135]
+  lab_pos: [115,175]
   lab_icon: icon_png/lab_interface.png
   button_size: [120,30]
   small_button_size: [25,25]
@@ -77,7 +97,7 @@ set:
 
 setting:
   font: 'times_new_roman'
-  sim_interval: 15  # (ms)
+  sim_interval: 7.5  # (ms)
   screen_size: [480,600]
   status_bar_size: [480,30]
   gamescreen_size: [480,570]

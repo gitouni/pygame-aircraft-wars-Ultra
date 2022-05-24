@@ -1,4 +1,6 @@
-scenes = [dict(type='scene1',
+scenes = dict(
+     meta=dict(name='demo',background='background_jpg/img_bg_3.jpg'),
+     scene=[dict(type='scene1',
                point_list=[[0.12, -0.06], [0.12, 0.01], [0.12, 0.09], [0.12, 0.17], [0.12, 0.23],\
                               [0.12, 0.28], [0.13, 0.32], [0.13, 0.37], [0.13, 0.4], [0.13, 0.45],\
                               [0.13, 0.49], [0.13, 0.53], [0.13, 0.57], [0.13, 0.56], [0.13, 0.52],\
@@ -406,7 +408,8 @@ scenes = [dict(type='scene1',
                scene_time=73.0
                ),
           ]
+)
 if __name__ == "__main__":
      import json
-     with open('data/scene.json','w')as f:
+     with open('data/demo_scene.json','w')as f:
           json.dump(scenes,f)
