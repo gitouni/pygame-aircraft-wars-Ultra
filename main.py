@@ -359,7 +359,7 @@ def run_game():
     display_font = pygame.font.SysFont('arial', 40, bold=True)
     screen = pygame.display.set_mode(screen_size)
     background = pygame.Surface((gamescreen_size[0]+100,gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
-    pygame.display.set_caption("pygmae-aircraft-ultra")
+    pygame.display.set_caption("pygame-aircraft-ultra")
     pygame.display.set_icon(pygame.image.load(CONFIG['setting']['game_ico']))
     # 渐变显示窗口
     for i in range(11):
