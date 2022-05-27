@@ -97,7 +97,7 @@ set:
 
 setting:
   font: 'times_new_roman'
-  sim_interval: 7.5  # (ms)
+  sim_interval: 15  # (ms)
   screen_size: [480,600]
   status_bar_size: [480,30]
   gamescreen_size: [480,570]
@@ -116,6 +116,7 @@ setting:
   success_font_pos: [70,300]
 
 player:
+  png_path: [data/player_1.txt, data/player_2.txt]
   missile:
     img: missile_png/missile0.png
     explode_sound_file: bomb_fire.wav

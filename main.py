@@ -79,7 +79,7 @@ def event_check(player:fighter) -> bool:
                     player.moving_right = False
                 if event.key == pygame.K_UP:
                     player.moving_up = True
-                    player.movng_down = False
+                    player.moving_down = False
                 elif event.key == pygame.K_DOWN:
                     player.moving_down = True
                     player.moving_up = False
@@ -325,6 +325,7 @@ def run_main():
             recent_name = os.path.splitext(recent_file)[0]
             statustext.set("欢迎, {}".format(recent_name))
     root.protocol('WM_DELETE_WINDOW', quit_main)
+    init_pygame()
     root.mainloop()
 
 def init_pygame():
@@ -474,7 +475,6 @@ if __name__ == "__main__":
     scene_list = list()
     scene_class = dict(scene1=scene1,scene2=scene2)
     init_time = pygame.time.get_ticks()
-    init_pygame()
     run_main()
     
 

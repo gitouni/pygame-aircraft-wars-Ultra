@@ -9,8 +9,7 @@ import pygame.mask
 import pygame.display
 import os
 import yaml
-from numpy import clip,digitize,linspace,random
-from random import randint
+import numpy as np
 from math import sqrt,pi,cos,sin,atan2,exp
 import utils
 from Game_set import game_set
@@ -27,6 +26,7 @@ enemy_path = CONFIG['enemy']['path']
 enemyfire_path = CONFIG['enemyfire']['path']
 bullet_path = CONFIG['bullet']['path']
 player_dict = CONFIG['player']
+
 enemy_dict = utils.csv2dict(CONFIG['enemy']['setting'])
 enemyfire_dict = utils.csv2dict(CONFIG['enemyfire']['setting'])
 bullet_dict = utils.csv2dict(CONFIG['bullet']['setting'])
@@ -39,7 +39,8 @@ enemyfire_type_b = utils.extract_type(enemyfire_dict['filename'],type='b')
 
 class fighter(pygame.sprite.Sprite):
     def __init__(self,hook_background:pygame.Surface,hook_gamescreen:pygame.Surface,hook_enemy_group:pygame.sprite.Group,
-                 hook_bullet_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group,sim_interval:float,volume_multiply:float=1.0):
+                 hook_bullet_group:pygame.sprite.Group,hook_background_group:pygame.sprite.Group,sim_interval:float,
+                 volume_multiply:float=1.0,index=1):
         pygame.sprite.Sprite.__init__(self)
         self.screen = hook_background  # 坐标
         self.sim_interval = sim_interval
@@ -50,8 +51,9 @@ class fighter(pygame.sprite.Sprite):
         self.hook_background_group = hook_background_group
         self.speed = 6 * sim_interval/10.0
         self.rol = 0 # 横向倾斜角
+        self.player_png = utils.csv2dict(player_dict['png_path'][index])
         self.agl = 0
-        self.img_ad = 'player_png/p{0}.png'.format(self.agl)
+        self.img_ad = os.path.join('player_png',self.player_png['LEFT'][self.agl]+'.png')
         self.size = (66,104)
         self.radius = sqrt(self.size[0]*self.size[1]/3.14) # 碰撞有效半径
         self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)  # 加载图形，并缩小像素
@@ -180,6 +182,14 @@ class fighter(pygame.sprite.Sprite):
             self.cooling -= missile_num*3
         self.launching = False
     def update(self):  # 更新飞船坐标，允许2个方向重合运动，但相互冲突的方向只能选择其一
+        def sign(x):
+            if x == 0:
+                return 0
+            elif x < 0:
+                return -1
+            else:
+                return 1
+        
         if self.moving_right == True and self.rect.right < self.screen_rect.right:
             self.rect.centerx += self.speed
         if self.moving_left == True and self.rect.left > 0:
@@ -188,16 +198,18 @@ class fighter(pygame.sprite.Sprite):
             self.rect.bottom -= self.speed
         if self.moving_down == True and self.rect.bottom < screen_size[1]:
             self.rect.bottom += self.speed
-        if self.moving_right == True and self.rol < 20:
+        if self.moving_right == True:
             self.rol += 1
-        if self.moving_left == True and self.rol > -20:
+        elif self.moving_left == True:
             self.rol -= 1
-        if self.moving_left == False and self.rol < 0:
-            self.rol += 1
-        if self.moving_right == False and self.rol > 0:
-            self.rol -= 1
-        self.agl= int(self.rol//5)
-        self.img_ad = 'player_png/p{0}.png'.format(self.agl)
+        else:
+            self.rol -= sign(self.rol)
+        self.rol = np.clip(self.rol,-15,15)
+        self.agl = round(self.rol//5)
+        if self.agl < 0:
+            self.img_ad = os.path.join('player_png',self.player_png['LEFT'][abs(self.agl)]+'.png')
+        else:
+            self.img_ad = os.path.join('player_png',self.player_png['RIGHT'][abs(self.agl)]+'.png')
         self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)
         self.mask = pygame.mask.from_surface(self.image)
         self.blitme()
@@ -220,9 +232,9 @@ class fighter(pygame.sprite.Sprite):
         self.update_state() # 回复能量和冷却
         
     def update_state(self):
-        self.HP = clip(self.HP+self.HP_recover,0,self.HP_max)
-        self.energy = clip(self.energy+self.energy_recover,0,self.energy_max)
-        self.cooling = clip(self.cooling+self.cooling_recover,0,self.cooling_max)
+        self.HP = np.clip(self.HP+self.HP_recover,0,self.HP_max)
+        self.energy = np.clip(self.energy+self.energy_recover,0,self.energy_max)
+        self.cooling = np.clip(self.cooling+self.cooling_recover,0,self.cooling_max)
         
     def hurt(self,damage):
         self.HP -= damage
@@ -315,7 +327,7 @@ class missile(pygame.sprite.Sprite):
                 target_list.append(enemy0)
                 # 加入可攻击组和序号
         if target_list:
-            self.target = target_list[randint(0,len(target_list)-1)]
+            self.target = target_list[np.random.randint(0,len(target_list))]
         else:
             self.target = None
     def rotate(self):
@@ -524,10 +536,10 @@ class enemy(pygame.sprite.Sprite):
             threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.hurt_sound_file),0.4*self.volume_multiply)).start()
     def dead(self):
         self.kill()
-        diamond_prob = random.rand()
+        diamond_prob = np.random.rand()
         prob_level = 0
         if diamond_prob < self.diamond:
-            prob_level = 5 - digitize(diamond_prob,linspace(0,self.diamond,5))
+            prob_level = 5 - np.digitize(diamond_prob,np.linspace(0,self.diamond,5))
             threading.Thread(target=utils.thread_play_music,args=(self.diamond_sound_file,1.0,0.8*self.volume_multiply)).start()
         self.hook_global_info.update(self.hook_global_info.gold + self.gold, self.hook_global_info.diamond+prob_level, self.hook_global_info.score + self.score)
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长

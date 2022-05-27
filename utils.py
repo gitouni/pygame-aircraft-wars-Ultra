@@ -29,10 +29,18 @@ class Info:
 
 class Setting:
     def __init__(self):
+        # running parameters
         self.has_saved = True
         self.background_jpg = 'background_jpg/img_bg_3.jpg'
         self.scenes = []
-        self.info = ""
+        # log parameters
+        self.scene_path = ""
+        self.fighter_state = []
+        self.timestamps = []
+    # def log_fighter(self,time:float,x:int,y:int,angle:int,shoot_flag:list(bool,bool,bool),launch_flag:bool):
+    #     self.timestamps.append(time)
+    #     self.fighter_state.append(dict(x=x,y=y,angle=angle,shoot1=shoot_flag[0],shoot2=shoot_flag[1],shoot3=shoot_flag[2],launch_flag=launch_flag))
+        
 
 
 

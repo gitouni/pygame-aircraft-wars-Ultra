@@ -66,7 +66,7 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
         full_path = os.path.join(CONFIG['path'],scene_files[index])
         with open(full_path,'r')as f:
             scene_data = json.load(f)
-        return scene_data
+        return scene_data, full_path
     
     def load(event=None):
         nonlocal globalset
@@ -75,9 +75,10 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
             messagebox.showerror('提示','您未选中任何地图！')
             return
         index = index[0]
-        scene_data = load_json(index)
+        scene_data, scene_path = load_json(index)
         globalset.background_jpg = scene_data['meta']['background']
         globalset.scenes = scene_data['scene']
+        globalset.scene_path = scene_path
         messagebox.showinfo('提示','地图加载完成\n可返回主菜单开始游戏。')
         info.set('地图加载完成!')
         root.destroy()
@@ -89,7 +90,7 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
             return
         index = index[0]
         map_name = simpledialog.askstring('提示','键入地图名称（兼容中文）')
-        scene_data = load_json(index)
+        scene_data = load_json(index)[0]
         scene_data['meta']['name'] = map_name
         with open(full_path,'w')as f:
             json.dump(scene_data,f)
@@ -100,7 +101,7 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
     def preview(event=None):
         nonlocal canvas,statustext,statusdetail,img
         index = listbox.curselection()[0]
-        scene_data = load_json(index)
+        scene_data = load_json(index)[0]
         background_path = scene_data['meta']['background']
         img = Image_load(background_path,CONFIG['background_size'])
         canvas.create_image(0,0,anchor='nw',image=img)
@@ -163,7 +164,7 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
     listbox.selection_set(0)
     canvas = tk.Canvas(F2,width=CONFIG['canvas_size'][0],height=CONFIG['canvas_size'][1])
     canvas.pack()
-    scene_data = load_json(0)
+    scene_data = load_json(0)[0]
     background_path = scene_data['meta']['background']
     img = Image_load(background_path,CONFIG['background_size'])
     canvas.create_image(0,0,anchor='nw',image=img)
