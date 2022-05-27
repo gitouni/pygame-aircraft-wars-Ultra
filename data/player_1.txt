@@ -1,0 +1,5 @@
+LEFT,RIGHT
+player_1_0,player_1_0
+player_1_L1,player_1_R1
+player_1_L2,player_1_R2
+player_1_L2,player_1_R3
