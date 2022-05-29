@@ -53,8 +53,8 @@ class fighter(pygame.sprite.Sprite):
         self.rol = 0 # 横向倾斜角
         self.player_png = utils.csv2dict(player_dict['png_path'][index])
         self.agl = 0
-        self.img_ad = os.path.join('player_png',self.player_png['LEFT'][self.agl]+'.png')
-        self.size = (66,104)
+        self.img_ad = os.path.join('player_png',self.player_png['LEFT'][self.agl])
+        self.size = (55,104)
         self.radius = sqrt(self.size[0]*self.size[1]/3.14) # 碰撞有效半径
         self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)  # 加载图形，并缩小像素
         self.mask = pygame.mask.from_surface(self.image)
@@ -207,9 +207,9 @@ class fighter(pygame.sprite.Sprite):
         self.rol = np.clip(self.rol,-15,15)
         self.agl = round(self.rol//5)
         if self.agl < 0:
-            self.img_ad = os.path.join('player_png',self.player_png['LEFT'][abs(self.agl)]+'.png')
+            self.img_ad = os.path.join('player_png',self.player_png['LEFT'][abs(self.agl)])
         else:
-            self.img_ad = os.path.join('player_png',self.player_png['RIGHT'][abs(self.agl)]+'.png')
+            self.img_ad = os.path.join('player_png',self.player_png['RIGHT'][abs(self.agl)])
         self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)
         self.mask = pygame.mask.from_surface(self.image)
         self.blitme()

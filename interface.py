@@ -1,3 +1,4 @@
+from asyncio.windows_events import CONNECT_PIPE_INIT_DELAY
 import pygame
 import pygame.mixer
 import pygame.font
@@ -6,12 +7,15 @@ from tkinter import messagebox, scrolledtext, simpledialog
 import threading
 import os
 from PIL import Image,ImageTk
-from sklearn.feature_selection import SequentialFeatureSelector
 import yaml
 from copy import deepcopy
 from Game_set import game_set
 import utils
 import json
+import threading
+import time
+import network
+import re
 
 def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
     img = Image.open(file).resize(size)
@@ -61,6 +65,89 @@ def run_help():
     canvas.create_window(*CONFIG['help_note_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=note_button)
     root.mainloop()
 
+def run_skin(globalset:utils.Setting,info:tk.StringVar):
+    def load(event=None):
+        nonlocal globalset,info
+        index = listbox.curselection()
+        if len(index) == 0:
+            messagebox.showwarning('警告','未选择任何战机皮肤。')
+            return
+        index = index[0]
+        globalset.player_index = index
+        info.set('选择皮肤[{}]成功！'.format(os.path.splitext(os.path.basename(CONFIG['png_data'][index]))[0]))
+    
+    def preview(event=None):
+        nonlocal img
+        index = listbox.curselection()
+        if len(index) == 0:
+            return  # 静默
+        index = index[0]
+        png_path = os.path.join(CONFIG['path'],skin_pack_list[index]['LEFT'][0])
+        img = Image_load(png_path,CONFIG['canvas_size'])
+        canvas.create_image(0,0,anchor='nw',image=img)
+        
+    # def movie():
+    #     nonlocal img
+    #     index = listbox.curselection()
+    #     if len(index) == 0:
+    #         return  # 静默
+    #     index = index[0]
+    #     png_list = []
+    #     for path in skin_pack_list[index]['LEFT']:
+    #         png_list.append(Image_load(os.path.join(CONFIG['path'],path)),CONFIG['canvas_size'])
+    #     png_list.reverse()
+    #     for path in skin_pack_list[index]['RIGHT'][1:]:
+    #         png_list.append(Image_load(os.path.join(CONFIG['path'],path)),CONFIG['canvas_size'])
+        
+    # def thread_movie(png_list):
+    #     nonlocal img
+        
+        
+    def on_closing():
+        root.destroy()
+        
+    root = tk.Toplevel()
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)['skin']
+    skin_pack_list = []
+    for path in CONFIG['png_data']:
+        skin_pack = utils.csv2dict(path)
+        skin_pack_list.append(skin_pack)
+    root.title("战机皮肤")
+    root.iconphoto(True,tk.PhotoImage(file=CONFIG['icon']))
+    F1 = tk.Frame(root)
+    F1.pack(side=tk.LEFT)
+    F2 = tk.Frame(root)
+    F2.pack(side=tk.RIGHT)
+    F11 = tk.Frame(F1)
+    F11.pack(side=tk.TOP)
+    F12 = tk.Frame(F1)
+    F12.pack(side=tk.BOTTOM)
+    button1 = tk.Button(F11,text='装配',bg='white',font=('songti',12),command=load)
+    button1.pack(side=tk.LEFT,padx=10)
+    button2 = tk.Button(F11,text='返回',bg='white',font=('songti',12),command=on_closing)
+    button2.pack(side=tk.RIGHT,padx=10)
+    scbar = tk.Scrollbar(F12, orient=tk.VERTICAL)
+    listbox = tk.Listbox(F12,yscrollcommand=scbar.set,
+                                 selectmode=tk.SINGLE,width=23,height=15,
+                                 font=('songti',12))
+    scbar.config(command=listbox.yview)
+    scbar.pack(side=tk.RIGHT,fill=tk.Y)
+    listbox.pack(fill=tk.BOTH)
+    listbox.bind("<Double-Button-1>",load)
+    listbox.bind("<<ListboxSelect>>",preview)
+    for path in CONFIG['png_data']:
+        listbox.insert(tk.END,os.path.splitext(os.path.basename(path))[0])
+    listbox.selection_set(globalset.player_index)
+    canvas = tk.Canvas(F2,width=CONFIG['canvas_size'][0],height=CONFIG['canvas_size'][1])
+    canvas.pack()
+    png_path = os.path.join(CONFIG['path'],skin_pack_list[globalset.player_index]['LEFT'][0])
+    img = Image_load(png_path,CONFIG['canvas_size'])
+    canvas.create_image(0,0,anchor='nw',image=img)
+    lock = threading.Lock()
+    stop = False
+    root.mainloop()
+
 def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
     def load_json(index:int)->dict:
         full_path = os.path.join(CONFIG['path'],scene_files[index])
@@ -80,7 +167,7 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
         globalset.scenes = scene_data['scene']
         globalset.scene_path = scene_path
         messagebox.showinfo('提示','地图加载完成\n可返回主菜单开始游戏。')
-        info.set('地图加载完成!')
+        info.set('地图[{}]加载完成!'.format(scene_data['meta']['name']))
         root.destroy()
         
     def rename():
@@ -114,8 +201,11 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
         statustext.set(head)
         statusdetail.set(info)
         
-            
     def on_closing():
+        nonlocal info
+        if globalset.scene_path == '':
+            messagebox.showwarning('提示','地图尚未成功加载！')
+            info.set('地图尚未成功加载！')
         root.destroy()
     scene = []
     root = tk.Toplevel()
@@ -455,3 +545,217 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     canvas.create_window(*config['lab_grid']['save_icon'],width=65,height=25,window=save_button)
     root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
+
+def run_net():
+    def turnto_server():
+        nonlocal NET_FLAG
+        NET_FLAG = network.NetType.Server
+        statustext.set("本机作为服务器")
+        title_label.config(text='请输入本机开放的端口号')
+        ip_entry.delete(0,tk.END)
+        ip_entry.config(state='disabled')
+    def turnto_client():
+        nonlocal NET_FLAG
+        NET_FLAG = network.NetType.Client
+        statustext.set("本机作为客户端")
+        title_label.config(text='请输入目标服务器的IP和端口号')
+        ip_entry.config(state='normal')
+    def clear_log():
+        log_window.config(state='normal')
+        log_window.delete('1.0',tk.END)
+        log_window.config(state='disabled')
+    def clear_msg():
+        msg_history.config(state='normal')
+        msg_history.delete('1.0',tk.END)
+        msg_history.config(state='disabled')
+    def connect_or_disconnect():
+        nonlocal FIRST_LOG
+        if not OPEN_FLAG:
+            if FIRST_LOG:
+                log_window.config(state='normal')
+                log_window.delete('1.0',tk.END)
+                log_window.config(state='disabled')
+                FIRST_LOG = False
+            connect()
+        else:
+            disconnect()
+    
+    def disconnect():
+        nonlocal ROLE,OPEN_FLAG
+        if isinstance(ROLE,network.Client):
+            ROLE.close()
+        elif isinstance(ROLE,network.Server):
+            ROLE.close()
+        time.sleep(0.1)
+        ip_entry.config(state='normal')
+        port_entry.config(state='normal')
+        S1.config(state='normal')
+        S2.config(state='normal')
+        OPEN_FLAG = False
+        with CONNECT_LOCK:
+            ROLE = None    
+        connect_button.config(text='连接')
+        statustext.set('已成功断开！')
+        
+    
+    def connect():
+        nonlocal ROLE, OPEN_FLAG
+        res = messagebox.askokcancel('提示','是否确认以上信息正确？\n连接之后无法修改本机身份、IP及端口信息?')
+        if not res:
+            return
+        if not check():
+            messagebox.showerror('警告','IP或端口的格式存在错误!')
+            return
+        ip = ip_entry.get()
+        port = int(port_entry.get())
+        ip_entry.config(state='disabled')
+        port_entry.config(state='disabled')
+        S1.config(state='disabled')
+        S2.config(state='disabled')
+        if NET_FLAG == network.NetType.Server:
+            ROLE = network.Server('',port)
+            ROLE.init_bind()
+            OPEN_FLAG = True
+            threading.Thread(target=ROLE.msg_rev_thread).start()
+            threading.Thread(target=receive_msg_thread,args=(0.25,)).start()
+            statustext.set('服务器端口已开启！')
+            connect_button.config(text='断开')
+        else:
+            ROLE = network.Client(ip,port)
+            res = ROLE.init_connect()
+            if not res:
+                disconnect()
+                OPEN_FLAG = False
+                connect_button.config(text='连接')
+                statustext.set('客户端连接失败！')
+                return
+            OPEN_FLAG = True
+            threading.Thread(target=ROLE.msg_rev_thread).start()
+            threading.Thread(target=receive_msg_thread,args=(0.25,)).start()
+            statustext.set('客户端连接成功！')
+            connect_button.config(text='断开')
+
+    def check()->bool:
+        ip = ip_entry.get()
+        port = port_entry.get()
+        ip_res = re.search('^\d*[.]\d*[.]\d*[.]\d*$',ip)
+        if ip_res is None and NET_FLAG == network.NetType.Client:
+            return False
+        try:
+            port = int(port)
+            if not (port>=0 and port<65536):
+                return False
+        except ValueError:
+            return False
+        return True
+    
+    def receive_msg_thread(wait_time=0.25):
+        while OPEN_FLAG:
+            temp_time = time.time()
+            try:
+                with ROLE.log_lock:
+                    log_buff = deepcopy(ROLE.log_buff)
+                    ROLE.log_buff.clear()
+                with ROLE.content_lock:
+                    content_buff = deepcopy(ROLE.content_buff)
+                    ROLE.content_buff.clear()
+                if len(log_buff)>0:
+                    for log in log_buff:
+                        log_window.config(state='normal')
+                        log_window.insert(tk.END,'[{}]-{}\n'.format(*log))
+                        log_window.insert(tk.END,'\n')
+                        log_window.config(state='disabled')
+                if len(content_buff)>0:
+                    for content in content_buff:
+                        msg_history.config(state='normal')
+                        msg_history.insert(tk.END,'[对方]-{}:\n{}\n'.format(*content))
+                        msg_history.config(state='disabled')
+                now = time.time()
+                if now - temp_time < wait_time:
+                    time.sleep(wait_time - now + temp_time)
+            except AttributeError:
+                break
+        return
+            
+    def insert_msg(event=None):
+        def insert_msg_thread():
+            msg_history.config(state='normal')
+            msg_fmt = '[本机]-{}:\n{}\n'
+            msg_history.insert(tk.END,msg_fmt.format(*utils.msg_with_time(msg_str)))
+            msg_history.config(state='disabled')
+            time.sleep(0.01)
+            msg_send.delete('1.0',tk.END)
+        msg_str = msg_send.get('1.0',tk.END)
+        threading.Thread(target=insert_msg_thread).start()
+        if not OPEN_FLAG:
+            log_window.config(state='normal')
+            log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('由于处于断线状态，消息未被发送')))
+            log_window.config(state='disabled')
+        else:
+            ROLE.send_msg(msg_str)
+
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)['net']
+    root = tk.Toplevel()
+    root.title('联机')
+    root.iconphoto(True,tk.PhotoImage(file=CONFIG['icon']))
+    statustext = tk.StringVar() 
+    statustext.set( '本机作为客户端' ) 
+    statusbar = tk.Label(root, textvariable=statustext,relief=tk.SUNKEN, anchor= 'w',fg='blue')
+    statusbar.pack(side=tk.BOTTOM,fill=tk.X)
+    F1 = tk.Frame(root)
+    F1.pack(side=tk.LEFT)
+    F2 = tk.Frame(root)
+    F2.pack(side=tk.RIGHT)
+    F01 = tk.Frame(F1)
+    F01.pack(side=tk.TOP)
+    F11 = tk.Frame(F1)
+    F11.pack(side=tk.TOP)  # Label
+    F12 = tk.Frame(F1)
+    F12.pack(side=tk.TOP)  # Entry IP
+    F13 = tk.Frame(F1)
+    F13.pack(side=tk.TOP)  # Entry Port
+    F14 = tk.Frame(F1)
+    F14.pack(side=tk.TOP)  # button
+    F15 = tk.Frame(F1)
+    F15.pack(side=tk.TOP)  # log
+    F21 = tk.Frame(root)
+    F21.pack(side=tk.TOP)  # msg history
+    F22 = tk.Frame(root)
+    F22.pack(side=tk.BOTTOM) # msg send entry
+    tk.Label(F01,text='切换本机身份',font=('heiti',12)).pack(side=tk.LEFT)
+    S1 = tk.Button(F01,text='客户端',font=('heiti',12),command=turnto_client)
+    S1.pack(side=tk.LEFT,padx=5)
+    S2 = tk.Button(F01,text='服务器',font=('heiti',12),command=turnto_server)
+    S2.pack(side=tk.LEFT,padx=5)
+    title_label = tk.Label(F11,text='请先选择本机身份',font=('heiti',12))
+    title_label.pack(side=tk.LEFT)
+    tk.Label(F12,text='IP地址',font=('heiti',12),justify=tk.LEFT).pack(side=tk.LEFT)
+    ip_entry = tk.Entry(F12,font=('times_new_roman',12),width=16)
+    ip_entry.pack(side=tk.LEFT)
+    tk.Label(F13,text='端口号',font=('heiti',12),justify=tk.LEFT).pack(side=tk.LEFT)
+    port_entry = tk.Entry(F13,font=('times_new_roman',12),width=16)
+    port_entry.pack(side=tk.LEFT)
+    tk.Button(F14,text='清空日志',font=('heiti',12),command=clear_log).pack(side=tk.LEFT,padx=0)
+    tk.Button(F14,text='清空消息',font=('heiti',12),command=clear_msg).pack(side=tk.LEFT,padx=5)
+    connect_button = tk.Button(F14,text='连接',font=('heiti',12),command=connect_or_disconnect)
+    connect_button.pack(side=tk.LEFT,padx=5)
+    log_window = scrolledtext.ScrolledText(F15,width=35,height=8,font=('songti',9),bg='black',fg='white')
+    log_window.pack(side=tk.BOTTOM,pady=5)
+    log_window.insert(tk.END,'日志窗口\n尚未连接到计算机\n')
+    log_window.config(state='disabled')
+    msg_history = scrolledtext.ScrolledText(F21,width=30,height=15,font=('songti',9))
+    msg_history.pack(side=tk.TOP)
+    msg_history.config(state='disabled')
+    msg_send = scrolledtext.ScrolledText(F22,width=30,height=3,font=('songti',9))
+    msg_send.pack(side=tk.TOP,pady=5)
+    msg_send.bind('<Return>',insert_msg)
+    NET_FLAG = network.NetType.Client
+    OPEN_FLAG = False
+    CONNECT_LOCK = threading.Lock()
+    FIRST_LOG = True
+    ROLE = None
+    root.mainloop()
+    
+    
+    

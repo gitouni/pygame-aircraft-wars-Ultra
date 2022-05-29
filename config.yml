@@ -62,10 +62,14 @@ main:
   start_icon: icon_png/play_interface.png
   lab_pos: [115,175]
   lab_icon: icon_png/lab_interface.png
+  net_pos: [115,215]
+  net_icon: icon/internet.png
   button_size: [120,30]
   small_button_size: [25,25]
   help_icon: icon_png/help.png
   setting_icon: icon_png/setting.png
+  skin_icon: icon/skin.png
+  skin_pos: [160,290]
   help_pos: [190,290]
   setting_pos: [220,290]
   help_color: "#2C3B35"
@@ -94,6 +98,16 @@ set:
   min_volume: 0
   max_volume: 1
   icon: icon/setting.png
+
+skin:
+  icon: icon/skin.png
+  path: player_png
+  png_data: [data/player_1.txt, data/player_2.txt]
+  canvas_size: [100,220]
+  
+net:
+  icon: icon/internet.png
+  
 
 setting:
   font: 'times_new_roman'
@@ -146,6 +160,7 @@ enemyfire:
   type_a_sound_file: Sound_effect/laser_big_oneshot.mp3
   type_b_sound_file: Sound_effect/launch1.wav
   explode_sound_file: Sound_effect/bomb_fire.wav
+
 enemy_path:
   path: path_josn
 
@@ -161,3 +176,4 @@ icon:
   upgrade: upgrade.png
   refresh: refresh.png
   save: save.png
+

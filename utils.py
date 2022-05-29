@@ -8,6 +8,7 @@ import yaml
 import re
 from math import sqrt,cos,sin
 import os
+import random
 
 with open("config.yml",'r')as f:
     SETTING = yaml.load(f,yaml.SafeLoader)['setting']
@@ -32,6 +33,7 @@ class Setting:
         # running parameters
         self.has_saved = True
         self.background_jpg = 'background_jpg/img_bg_3.jpg'
+        self.player_index = 0
         self.scenes = []
         # log parameters
         self.scene_path = ""
@@ -41,8 +43,12 @@ class Setting:
     #     self.timestamps.append(time)
     #     self.fighter_state.append(dict(x=x,y=y,angle=angle,shoot1=shoot_flag[0],shoot2=shoot_flag[1],shoot3=shoot_flag[2],launch_flag=launch_flag))
         
+def msg_with_time(msg:str)->tuple:
+    return (pretty_time(time.time()),msg)
 
-
+def pretty_time(timestamp:float)->str:
+    local_time = time.localtime(timestamp)
+    return time.strftime("%H:%M:%S",local_time)
 
 def pretty_number(num:int)->str:
     if num>1E12:
@@ -153,12 +159,16 @@ def csv2dict(fname:str):
     f.close()
     return info_dict
 
-def path_aug(path:list,inv_index=True,flip=True):
+def path_aug(path:list,inv_index=True,flip=True,offset=0):
     if inv_index:
         path.reverse()
     if flip:
         for i in range(len(path)):
             path[i][0] = 1.0 - path[i][0]
+    if offset != 0:
+        offset_ = 2*(random.random()-0.5)*offset
+        for i in range(len(path)):
+            path[i][0] += offset_
     return path
 
 # 相对坐标转绝对坐标

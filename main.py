@@ -23,7 +23,7 @@ from scene import scene1,scene2
 from utils import Info, Setting
 # interface import
 import interface
-from interface import run_lab, run_help, run_account, run_scene_loading
+from interface import run_lab, run_help, run_account, run_scene_loading, run_skin, run_net
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 from PIL import Image,ImageTk
@@ -233,7 +233,9 @@ def run_setting(info:tk.StringVar)->None:
     root.protocol('WM_DELETE_WINDOW',get_value)
     root.mainloop()
     
-    
+def _run_skin(info:tk.StringVar):
+    global GLOBAL_SET
+    run_skin(GLOBAL_SET,info)
 
 def _run_lab():
     global gameset,GLOBAL_SET
@@ -256,12 +258,12 @@ def run_main():
     SIGN_POS = CONFIG['main']['sign_pos']
     account_pos = CONFIG['main']['account_pos']
     play_pos = CONFIG['main']['start_pos']
+    skin_pos = CONFIG['main']['skin_pos']
     normal_level_pos = CONFIG['main']['normal_level_pos']
     lab_pos = CONFIG['main']['lab_pos']
-    welcome_pos = CONFIG['main']['welcome_pos']
+    net_pos = CONFIG['main']['net_pos']
     help_pos = CONFIG['main']['help_pos']
     setting_pos = CONFIG['main']['setting_pos']
-    welcome_color = CONFIG['main']['welcome_color']
     button_size = CONFIG['main']['button_size']
     small_size = CONFIG['main']['small_button_size']
     account_path = CONFIG['setting']['account_path']
@@ -291,26 +293,28 @@ def run_main():
     button2 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=run_game,background='white',
                         image=start_icon,compound='left')
     lab_icon = interface.Image_load(CONFIG['main']['lab_icon'],small_size)
-    button3 = tk.Button(root,text='实验室',font=('heiti',14,'bold'),command=_run_lab,background='white',
+    button3 = tk.Button(root,text='实验中心',font=('heiti',14,'bold'),command=_run_lab,background='white',
                         image=lab_icon,compound='left')
-    button0.pack()
-    button1.pack()
-    button2.pack()
-    button3.pack()
-    help_img = Image.open(CONFIG['main']['help_icon']).resize(small_size)
-    help_img = ImageTk.PhotoImage(help_img)
-    setting_img = Image.open(CONFIG['main']['setting_icon']).resize(small_size)
-    setting_img = ImageTk.PhotoImage(setting_img)
+    net_icon = interface.Image_load(CONFIG['main']['net_icon'],small_size)
+    button4 = tk.Button(root,text='联机对战',font=('heiti',14,'bold'),command=run_net,background='white',
+                        image=net_icon,compound='left')
+    help_img = interface.Image_load(CONFIG['main']['help_icon'],small_size)
+    setting_img = interface.Image_load(CONFIG['main']['setting_icon'],small_size)
+    skin_img = interface.Image_load(CONFIG['main']['skin_icon'],small_size)
     help_button = tk.Button(root,bg=CONFIG['main']['help_color'],image=help_img,command=run_help)
     setting_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=setting_img,command=lambda info=statustext: run_setting(info))
+    skin_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=skin_img,command=lambda info=statustext: _run_skin(info))
     help_button.pack()
     setting_button.pack()
+    skin_button.pack()
     canvas.create_window(*help_pos,width=small_size[0],height=small_size[1],window=help_button)
     canvas.create_window(*setting_pos,width=small_size[0],height=small_size[1],window=setting_button)
+    canvas.create_window(*skin_pos,width=small_size[0],height=small_size[1],window=skin_button)
     canvas.create_window(*account_pos,width=button_size[0],height=button_size[1],window=button0)
     canvas.create_window(*normal_level_pos,width=button_size[0],height=button_size[1],window=button1)
     canvas.create_window(*play_pos,width=button_size[0],height=button_size[1],window=button2)
     canvas.create_window(*lab_pos,width=button_size[0],height=button_size[1],window=button3)
+    canvas.create_window(*net_pos,width=button_size[0],height=button_size[1],window=button4)
     if os.path.exists(account_path):
         account_file = os.listdir(account_path)
         if len(account_file)>0:
@@ -368,7 +372,7 @@ def run_game():
         pygame.display.flip()
     
     #开始游戏
-    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group,SIM_INTERVAL,VOLUME)
+    player = fighter(background,screen,enemy_Group,bullet_Group,background_Group,SIM_INTERVAL,VOLUME,GLOBAL_SET.player_index)
     player.game_set(gameset) # 使用该游戏设置
     player.blitme()
     pygame.display.flip()
