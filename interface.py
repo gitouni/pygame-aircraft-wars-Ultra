@@ -1,4 +1,3 @@
-from asyncio.windows_events import CONNECT_PIPE_INIT_DELAY
 import pygame
 import pygame.mixer
 import pygame.font
@@ -23,18 +22,23 @@ def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
 
 
     
-def run_help():
+def run_help(globalset:utils.Setting):
     def show_operation_txt():
-        nonlocal notebook
         notebook.delete('0.0',tk.END)
         notebook.insert('0.0',help_operation_txt)
     def show_note_txt():
-        nonlocal notebook
         notebook.delete('0.0',tk.END)
         notebook.insert('0.0',help_note_txt)
+    def on_closing():
+        globalset.win_open['help'] = False
+        root.destroy()
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)['help']
+    if globalset.win_open['help']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
     root = tk.Toplevel()
+    globalset.win_open['help'] = True
     win_width,win_height = CONFIG['screen_size']
     button_size = CONFIG['button_size']
     bg_color = CONFIG['button_bg_color']
@@ -63,6 +67,7 @@ def run_help():
     canvas.create_window(*CONFIG['notebook_pos'],anchor='nw',width=win_width-10,height=win_height-60,window=notebook)
     canvas.create_window(*CONFIG['help_operation_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=operation_button)
     canvas.create_window(*CONFIG['help_note_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=note_button)
+    root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
 
 def run_skin(globalset:utils.Setting,info:tk.StringVar):
@@ -102,11 +107,14 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
     # def thread_movie(png_list):
     #     nonlocal img
         
-        
     def on_closing():
+        globalset.win_open['skin'] = False
         root.destroy()
-        
+    if globalset.win_open['skin']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
     root = tk.Toplevel()
+    globalset.win_open['skin'] = True
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)['skin']
     skin_pack_list = []
@@ -144,8 +152,7 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
     png_path = os.path.join(CONFIG['path'],skin_pack_list[globalset.player_index]['LEFT'][0])
     img = Image_load(png_path,CONFIG['canvas_size'])
     canvas.create_image(0,0,anchor='nw',image=img)
-    lock = threading.Lock()
-    stop = False
+    root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
 
 def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
@@ -168,6 +175,7 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
         globalset.scene_path = scene_path
         messagebox.showinfo('提示','地图加载完成\n可返回主菜单开始游戏。')
         info.set('地图[{}]加载完成!'.format(scene_data['meta']['name']))
+        globalset.win_open['scene'] = False
         root.destroy()
         
     def rename():
@@ -206,9 +214,15 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
         if globalset.scene_path == '':
             messagebox.showwarning('提示','地图尚未成功加载！')
             info.set('地图尚未成功加载！')
+        globalset.win_open['scene'] = False
         root.destroy()
+        
+    if globalset.win_open['scene']:
+        messagebox.showerror('警示','请勿重复加载窗口')
+        return
     scene = []
     root = tk.Toplevel()
+    globalset.win_open['scene'] = True
     root.title('普通模式')
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)['map']
@@ -334,7 +348,13 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
             info.set("欢迎回来，{}".format(os.path.splitext(os.path.basename(gameset.path))[0]))
         else:
             info.set("未加载任何账户！")
+        globalset.win_open['account'] = False
         root.destroy()
+    
+    if globalset.win_open['account']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
+    
     name_fmt = '{name}.json'
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
@@ -344,7 +364,9 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
         exist_account = False
     else:
         exist_account = True
+    
     root = tk.Toplevel()
+    globalset.win_open['account'] = True
     root.title('账户')
     root.iconphoto(True,tk.PhotoImage(file=CONFIG['setting']['account_ico']))
     F1 = tk.Frame(root,borderwidth=1,highlightthickness=1,name='操作')
@@ -444,8 +466,12 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         if gameset.__dict__ != gameset_copy.__dict__:
             threading.Thread(target=utils.thread_play_music,args=(config['exit_sound_file'],1,2.0)).start()
             if messagebox.askyesno("提示", "未保存，是否退出?"):
+                globalset.win_open['lab'] = False
                 root.destroy()
+            else:
+                return
         else:
+            globalset.win_open['lab'] = False
             root.destroy()
             
     if not pygame.get_init():
@@ -453,10 +479,15 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         pygame.font.init() # 初始化字体设置
         pygame.mixer.init(11025)  # 音乐初始化
         pygame.mixer.music.set_volume(volume)  # 音量初始化
-        
+    
+    if globalset.win_open['lab']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
+    
     config = CONFIG['interface']
     icon_config = CONFIG['icon']
     root = tk.Toplevel()
+    globalset.win_open['lab'] = True
     root.title('实验室')
     # root.bind("<Button-1>",print_coord) # for debug
     win_width, win_height = config['lab_screen_size']
@@ -546,7 +577,7 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
 
-def run_net():
+def run_net(globalset:utils.Setting):
     def turnto_server():
         nonlocal NET_FLAG
         NET_FLAG = network.NetType.Server
@@ -583,8 +614,10 @@ def run_net():
     def disconnect():
         nonlocal ROLE,OPEN_FLAG
         if isinstance(ROLE,network.Client):
+            ROLE.send_disconnection()
             ROLE.close()
         elif isinstance(ROLE,network.Server):
+            ROLE.send_disconnection()
             ROLE.close()
         time.sleep(0.1)
         ip_entry.config(state='normal')
@@ -630,6 +663,7 @@ def run_net():
                 statustext.set('客户端连接失败！')
                 return
             OPEN_FLAG = True
+            ROLE.send_netstate()
             threading.Thread(target=ROLE.msg_rev_thread).start()
             threading.Thread(target=receive_msg_thread,args=(0.25,)).start()
             statustext.set('客户端连接成功！')
@@ -664,11 +698,13 @@ def run_net():
                         log_window.config(state='normal')
                         log_window.insert(tk.END,'[{}]-{}\n'.format(*log))
                         log_window.insert(tk.END,'\n')
+                        log_window.see(tk.END)
                         log_window.config(state='disabled')
                 if len(content_buff)>0:
                     for content in content_buff:
                         msg_history.config(state='normal')
                         msg_history.insert(tk.END,'[对方]-{}:\n{}\n'.format(*content))
+                        msg_history.see(tk.END)
                         msg_history.config(state='disabled')
                 now = time.time()
                 if now - temp_time < wait_time:
@@ -682,6 +718,7 @@ def run_net():
             msg_history.config(state='normal')
             msg_fmt = '[本机]-{}:\n{}\n'
             msg_history.insert(tk.END,msg_fmt.format(*utils.msg_with_time(msg_str)))
+            msg_history.see(tk.END)
             msg_history.config(state='disabled')
             time.sleep(0.01)
             msg_send.delete('1.0',tk.END)
@@ -690,13 +727,22 @@ def run_net():
         if not OPEN_FLAG:
             log_window.config(state='normal')
             log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('由于处于断线状态，消息未被发送')))
+            log_window.see(tk.END)
             log_window.config(state='disabled')
         else:
             ROLE.send_msg(msg_str)
 
+    def on_closing():
+        globalset.win_open['net'] = False
+        root.destroy()
+
+    if globalset.win_open['net']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)['net']
     root = tk.Toplevel()
+    globalset.win_open['net'] = True
     root.title('联机')
     root.iconphoto(True,tk.PhotoImage(file=CONFIG['icon']))
     statustext = tk.StringVar() 
@@ -755,6 +801,7 @@ def run_net():
     CONNECT_LOCK = threading.Lock()
     FIRST_LOG = True
     ROLE = None
+    root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
     
     

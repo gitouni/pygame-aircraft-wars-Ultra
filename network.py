@@ -15,6 +15,7 @@ class Protocol(Enum):
     SEND_MESSAGE = 1
     SEND_GAME_STATE = 2
     RECEIVE_MESSAGE = 3
+    CLOSE_CONNECTION = 4
 
 
 class Client:
@@ -55,15 +56,36 @@ class Client:
         with self.log_lock:
             self.log_buff.append(utils.msg_with_time('Connection closed normally.'))
         self.is_open = False
+    
+    def send_netstate(self):
+        if not self.is_open:
+            with self.log_lock:
+                self.log_buff.append(utils.msg_with_time('Reject to send netstate, disconnected with server!'))
+            return
+        data = dict(type=Protocol.SEND_NET_STATE.value,content='')
+        data_str = json.dumps(data)
+        self.client.send(data_str.encode('utf-8'))
+        
+    def send_disconnection(self):
+        if not self.is_open:
+            with self.log_lock:
+                self.log_buff.append(utils.msg_with_time('Reject to send disconnection state, disconnected with server!'))
+            return
+        data = dict(type=Protocol.CLOSE_CONNECTION.value,content='')
+        data_str = json.dumps(data)
+        self.client.send(data_str.encode('utf-8'))
         
     def send_msg(self,msg:str):
         if not self.is_open:
             with self.log_lock:
-                self.log_buff.append(utils.msg_with_time('Reject to send, disconnected with server!'))
+                self.log_buff.append(utils.msg_with_time('Reject to send message, disconnected with server!'))
             return
         data = dict(type=Protocol.SEND_MESSAGE.value,content=msg)
         data_str = json.dumps(data)
-        self.client.send(data_str.encode('utf-8'))
+        try:
+            self.client.send(data_str.encode('utf-8'))
+        except ConnectionError:
+            return
         with self.log_lock:
             self.log_buff.append(utils.msg_with_time('Message has been sent to server {}.'.format(self.meta['host'])))
         
@@ -117,42 +139,52 @@ class Client:
     def msg_rev_thread(self):
         while True:
             with self.open_lock:
-                is_open = self.is_open
-            if not is_open:
-                break
+                if not self.is_open:
+                    break
             try:
                 while True:
+                    with self.open_lock:
+                        if not self.is_open:
+                            break
                     try:
                         buff_str = self.client.recv(1024).decode('utf-8')
+                        if buff_str == "":  # 为空说明未收到任何数据，重新接收
+                            continue
+                        ## 以下为客户端的响应程序
+                        buff = json.loads(buff_str)  # dict
+                        if buff['type'] == Protocol.SEND_NET_STATE.value:  # 网络延迟测试    
+                            data = dict(type=Protocol.SEND_NET_STATE.value,content='from {}'.format(self.meta['host']))
+                            data_str = json.dumps(data)
+                            self.client.send(data_str.encode('utf-8'))
+                        elif buff['type'] == Protocol.SEND_MESSAGE.value:
+                            data = dict(type=Protocol.RECEIVE_MESSAGE.value,content='Message Recieved!')
+                            data_str = json.dumps(data)
+                            self.client.send(data_str.encode('utf-8'))
+                            with self.content_lock:
+                                self.content_buff.append(utils.msg_with_time(buff['content']))
+                        elif buff['type'] == Protocol.RECEIVE_MESSAGE.value:
+                            with self.log_lock:
+                                self.log_buff.append(utils.msg_with_time('Message Received'))
+                        elif buff['type'] == Protocol.CLOSE_CONNECTION.value:
+                            with self.log_lock:
+                                self.log_buff.append(utils.msg_with_time('Server broken down, try to connect again.'))
+                            with self.open_lock:
+                                self.is_open = False
+                        else:
+                            data = dict(type=Protocol.SEND_NET_STATE.value,content='Unknown message received!')
+                            data_str = json.dumps(data)
+                            self.client.send(data_str.encode('utf-8'))
+                            with self.log_lock:
+                                self.log_buff.append(utils.msg_with_time('Unknown message recevied from {}'.format(self.meta['host'])))
                     except socket.timeout:
                         buff_str = ""
                         with self.log_lock:
-                            self.log_buff.append(utils.msg_with_time('None of messages received.'))
+                            self.log_buff.append(utils.msg_with_time('No reply from Server, try to reconnect.'))
+                    except json.decoder.JSONDecodeError:
+                        buff_str = ""
                     except OSError:
                         pass
-                    if buff_str == "":  # 为空说明未收到任何数据，重新接收
-                        continue
-                    ## 以下为客户端的响应程序
-                    buff = json.loads(buff_str)  # dict
-                    if buff['type'] == Protocol.SEND_NET_STATE.value:  # 网络延迟测试    
-                        data = dict(type=Protocol.SEND_NET_STATE.value,content='from {}'.format(self.meta['host']))
-                        data_str = json.dumps(data)
-                        self.client.send(data_str.encode('utf-8'))
-                    elif buff['type'] == Protocol.SEND_MESSAGE.value:
-                        data = dict(type=Protocol.RECEIVE_MESSAGE.value,content='Message Recieved!')
-                        data_str = json.dumps(data)
-                        self.client.send(data_str.encode('utf-8'))
-                        with self.content_lock:
-                            self.content_buff.append(utils.msg_with_time(buff['content']))
-                    elif buff['type'] == Protocol.RECEIVE_MESSAGE.value:
-                        with self.log_lock:
-                            self.log_buff.append(utils.msg_with_time('Message Received'))
-                    else:
-                        data = dict(type=Protocol.SEND_NET_STATE.value,content='Unknown message received!')
-                        data_str = json.dumps(data)
-                        self.client.send(data_str.encode('utf-8'))
-                        with self.log_lock:
-                            self.log_buff.append(utils.msg_with_time('Unknown message recevied from {}'.format(self.meta['host'])))
+                    
             except ConnectionAbortedError:
                 with self.log_lock:
                     self.log_buff.append(utils.msg_with_time('Disconnect with Server:{}'.format(self.meta['host'])))
@@ -185,15 +217,29 @@ class Server:
     def open(self):
         with self.open_lock:
             self.is_open = True
-            
+    
+    def send_disconnection(self):
+        with self.open_lock:
+            is_open = self.is_open
+        if not is_open or self.ss is None:
+            with self.log_lock:
+                self.log_buff.append(utils.msg_with_time('Reject to send disconnection state, none of connected client'))
+        else:
+            data = dict(type=Protocol.CLOSE_CONNECTION.value,content='')
+            data_str = json.dumps(data)
+            self.ss.send(data_str.encode('utf-8'))
+     
     def send_msg(self,msg:str):
         if self.ss is None:
             with self.log_lock:
-                self.log_buff.append(utils.msg_with_time('Reject to send, none of connected node!'))
+                self.log_buff.append(utils.msg_with_time('Reject to send message, none of connected client!'))
         else:
             data = dict(type=Protocol.SEND_MESSAGE.value,content=msg)
             data_str = json.dumps(data)
-            self.ss.send(data_str.encode('utf-8'))
+            try:
+                self.ss.send(data_str.encode('utf-8'))
+            except ConnectionError:
+                return
             with self.log_lock:
                 self.log_buff.append(utils.msg_with_time('Message has been sent to {}'.format(self.ss_ip)))
     def msg_rev_thread(self):
@@ -204,15 +250,18 @@ class Server:
                     break
             try:
                 self.ss, addr = self.server.accept()
+                serve_start = time.time()
                 self.ss_ip = addr[0]
                 with self.log_lock:
                     self.log_buff.append(utils.msg_with_time('Connection from: {}'.format(addr[0])))
                 flag = True
                 while flag:
-                    if not self.is_open:
-                        break
                     try:
-                        while True:
+                        while flag:
+                            with self.open_lock:
+                                if not self.is_open:
+                                    flag = False
+                                    break
                             try:
                                 buff_str = self.ss.recv(1024).decode('utf-8')
                                 if buff_str == "":  # 为空说明未收到任何数据，重新接收
@@ -232,6 +281,12 @@ class Server:
                                 elif buff['type'] == Protocol.RECEIVE_MESSAGE.value:
                                     with self.log_lock:
                                         self.log_buff.append(utils.msg_with_time('Message Received'))
+                                    
+                                elif buff['type'] == Protocol.CLOSE_CONNECTION.value:
+                                    with self.log_lock:
+                                        self.log_buff.append(utils.msg_with_time('Client Disconnection'))
+                                    flag = False
+                                    break
                                 else:
                                     data = dict(type=Protocol.SEND_NET_STATE.value,content='Unknown message received!')
                                     data_str = json.dumps(data)
@@ -243,6 +298,8 @@ class Server:
                                 with self.log_lock:
                                     self.log_buff.append(utils.msg_with_time('Connection Error!'))
                                 break
+                            except json.decoder.JSONDecodeError:
+                                buff_str = ""
                             except AttributeError:
                                 pass
                     except ConnectionAbortedError:
@@ -255,7 +312,12 @@ class Server:
                                     self.meta['closetime'] - time.time() + serve_start)))
                 self.ss = None
                 self.ss_ip = None
-                pass
+            except OSError:
+                with self.open_lock:
+                    self.is_open = False
+                self.ss = None
+                self.ss_ip = None
+                break
     def auto_serve(self):
         def serve_thread():
             serve_start = time.time()
