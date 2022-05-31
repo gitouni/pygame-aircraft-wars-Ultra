@@ -16,6 +16,7 @@ import time
 import network
 import re
 
+
 def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
     img = Image.open(file).resize(size)
     return ImageTk.PhotoImage(img)
@@ -398,16 +399,6 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
     root.mainloop()
 
 def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
-    with open('config.yml','r')as f:
-        CONFIG = yaml.load(f,yaml.SafeLoader)
-    gameset_copy = game_set()
-    gameset_copy.__dict__ = deepcopy(gameset.__dict__)
-    gold_consume_keys = ['HP_gold','HP_recover_gold','energy_gold','energy_recover_gold','cooling_gold','cooling_recover_gold',\
-                        'bullet_ID_gold','shooting_cd_gold','missile_num_gold','missile_damage_gold','missile_actime_gold','missile_flyingtime_gold']
-    diamond_consume_keys = ['HP_diamond','HP_recover_diamond','energy_diamond','energy_recover_diamond','cooling_diamond','cooling_recover_diamond',\
-                        'bullet_ID_diamond','shooting_cd_diamond','missile_num_diamond','missile_damage_diamond','missile_actime_diamond','missile_flyingtime_diamond']
-    level_keys = ['player_HP_level','player_HP_recover','player_energy_level','player_energy_recover_level','player_cooling_level','player_cooling_recover_level',\
-            'bullet_ID','bullet_shooting_cd_level','missile_num_level','missile_damage_level','missile_actime_level','missile_flyingtime_level']
     def refresh():
         nonlocal gameset_copy
         gameset_copy.__dict__ = deepcopy(gameset.__dict__)
@@ -474,6 +465,16 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
             globalset.win_open['lab'] = False
             root.destroy()
             
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)
+    gameset_copy = game_set()
+    gameset_copy.__dict__ = deepcopy(gameset.__dict__)
+    gold_consume_keys = ['HP_gold','HP_recover_gold','energy_gold','energy_recover_gold','cooling_gold','cooling_recover_gold',\
+                        'bullet_ID_gold','shooting_cd_gold','missile_num_gold','missile_damage_gold','missile_actime_gold','missile_flyingtime_gold']
+    diamond_consume_keys = ['HP_diamond','HP_recover_diamond','energy_diamond','energy_recover_diamond','cooling_diamond','cooling_recover_diamond',\
+                        'bullet_ID_diamond','shooting_cd_diamond','missile_num_diamond','missile_damage_diamond','missile_actime_diamond','missile_flyingtime_diamond']
+    level_keys = ['player_HP_level','player_HP_recover','player_energy_level','player_energy_recover_level','player_cooling_level','player_cooling_recover_level',\
+            'bullet_ID','bullet_shooting_cd_level','missile_num_level','missile_damage_level','missile_actime_level','missile_flyingtime_level']
     if not pygame.get_init():
         pygame.init()  # 初始化背景设置
         pygame.font.init() # 初始化字体设置

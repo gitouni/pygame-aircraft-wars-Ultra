@@ -34,14 +34,16 @@ class Setting:
         self.has_saved = True
         self.background_jpg = 'background_jpg/img_bg_3.jpg'
         self.player_index = 0
+        self.win_open = dict(skin=False,setting=False,help=False,account=False,scene=False,game=False,lab=False,net=False)
         self.scenes = []
         # log parameters
         self.scene_path = ""
         self.fighter_state = []
         self.timestamps = []
-    # def log_fighter(self,time:float,x:int,y:int,angle:int,shoot_flag:list(bool,bool,bool),launch_flag:bool):
-    #     self.timestamps.append(time)
-    #     self.fighter_state.append(dict(x=x,y=y,angle=angle,shoot1=shoot_flag[0],shoot2=shoot_flag[1],shoot3=shoot_flag[2],launch_flag=launch_flag))
+        
+    def log_fighter(self,time:float,x:int,y:int,angle:int,shoot_flag:list,launch_flag:bool):
+        self.timestamps.append(time)
+        self.fighter_state.append(dict(x=x,y=y,angle=angle,shoot1=shoot_flag[0],shoot2=shoot_flag[1],shoot3=shoot_flag[2],launch_flag=launch_flag))
         
 def msg_with_time(msg:str)->tuple:
     return (pretty_time(time.time()),msg)
