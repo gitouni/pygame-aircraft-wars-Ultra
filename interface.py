@@ -615,9 +615,11 @@ def run_net(globalset:utils.Setting):
         nonlocal ROLE,OPEN_FLAG
         if isinstance(ROLE,network.Client):
             ROLE.send_disconnection()
+            time.sleep(0.2)
             ROLE.close()
         elif isinstance(ROLE,network.Server):
             ROLE.send_disconnection()
+            time.sleep(0.2)
             ROLE.close()
         time.sleep(0.1)
         ip_entry.config(state='normal')
@@ -654,6 +656,7 @@ def run_net(globalset:utils.Setting):
             statustext.set('服务器端口已开启！')
             connect_button.config(text='断开')
         else:
+            statustext.set('请等待客户端连接结果...')
             ROLE = network.Client(ip,port)
             res = ROLE.init_connect()
             if not res:
@@ -703,7 +706,10 @@ def run_net(globalset:utils.Setting):
                 if len(content_buff)>0:
                     for content in content_buff:
                         msg_history.config(state='normal')
-                        msg_history.insert(tk.END,'[对方]-{}:\n{}\n'.format(*content))
+                        msg_head = '[对方]-{}:\n'.format(content[0])
+                        msg_content = '{}\n'.format(content[1])
+                        msg_history.insert(tk.END,msg_head,'left-color')
+                        msg_history.insert(tk.END,msg_content,'left')
                         msg_history.see(tk.END)
                         msg_history.config(state='disabled')
                 now = time.time()
@@ -716,8 +722,11 @@ def run_net(globalset:utils.Setting):
     def insert_msg(event=None):
         def insert_msg_thread():
             msg_history.config(state='normal')
-            msg_fmt = '[本机]-{}:\n{}\n'
-            msg_history.insert(tk.END,msg_fmt.format(*utils.msg_with_time(msg_str)))
+            msg_tuple = utils.msg_with_time(msg_str)
+            msg_head = '[本机]-{}:\n'.format(msg_tuple[0])
+            msg_content = '{}\n'.format(msg_tuple[1])
+            msg_history.insert(tk.END,msg_head,'right-color')
+            msg_history.insert(tk.END,msg_content,'right')
             msg_history.see(tk.END)
             msg_history.config(state='disabled')
             time.sleep(0.01)
@@ -790,10 +799,15 @@ def run_net(globalset:utils.Setting):
     log_window.pack(side=tk.BOTTOM,pady=5)
     log_window.insert(tk.END,'日志窗口\n尚未连接到计算机\n')
     log_window.config(state='disabled')
-    msg_history = scrolledtext.ScrolledText(F21,width=30,height=15,font=('songti',9))
+    msg_win_length = 30
+    msg_history = scrolledtext.ScrolledText(F21,width=msg_win_length,height=15,font=('songti',9))
     msg_history.pack(side=tk.TOP)
     msg_history.config(state='disabled')
-    msg_send = scrolledtext.ScrolledText(F22,width=30,height=3,font=('songti',9))
+    msg_history.tag_config('left',justify=tk.LEFT)
+    msg_history.tag_config('right',justify=tk.RIGHT)
+    msg_history.tag_config('left-color',justify=tk.LEFT,foreground='red')
+    msg_history.tag_config('right-color',justify=tk.RIGHT,foreground='blue')
+    msg_send = scrolledtext.ScrolledText(F22,width=msg_win_length,height=3,font=('songti',9))
     msg_send.pack(side=tk.TOP,pady=5)
     msg_send.bind('<Return>',insert_msg)
     NET_FLAG = network.NetType.Client

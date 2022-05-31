@@ -284,7 +284,7 @@ class Server:
                                     
                                 elif buff['type'] == Protocol.CLOSE_CONNECTION.value:
                                     with self.log_lock:
-                                        self.log_buff.append(utils.msg_with_time('Client Disconnection'))
+                                        self.log_buff.append(utils.msg_with_time('Client Disconnection Actively'))
                                     flag = False
                                     break
                                 else:
@@ -296,7 +296,7 @@ class Server:
                             except ConnectionError:
                                 flag = False
                                 with self.log_lock:
-                                    self.log_buff.append(utils.msg_with_time('Connection Error!'))
+                                    self.log_buff.append(utils.msg_with_time('Connection Error'))
                                 break
                             except json.decoder.JSONDecodeError:
                                 buff_str = ""
