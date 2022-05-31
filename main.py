@@ -29,7 +29,10 @@ from tkinter import messagebox, simpledialog
 from PIL import Image,ImageTk
 import threading
 
-
+class AutoGameRun:
+    def __init__(self,player1_dict:dict,player2_dict:dict,player1_skin_index:int,player2_skin_index:int,
+                 background_jpg:str,sim_interval:float,volume:float):
+        self.player1 = fighter()
 
 def clear_sprite(group:pygame.sprite.Group):
     for sprite in group.sprites():
@@ -192,16 +195,21 @@ def draw_statebar(screen:pygame.Surface,player:fighter,init_time:int,player_info
     screen.blit(score_font_surface,SCORE_POS)
     screen.blit(time_font_surface,TIME_POS)
 
-def run_setting(info:tk.StringVar)->None:
+def run_setting(globalset:utils.Setting,info:tk.StringVar)->None:
     def get_value()->None:
         global SIM_INTERVAL,VOLUME
         SIM_INTERVAL, VOLUME = sim_interval_list[int(scale1.get())], volume_list[int(scale2.get())]
         info.set('设置成功！')
+        globalset.win_open['setting'] = False
         root.destroy()
     init_pygame()
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)['set']
+    if globalset.win_open['setting']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
     root = tk.Toplevel()
+    globalset.win_open['setting'] = True
     root.title('设置')
     root.geometry("{}x{}".format(*CONFIG['screen_size']))
     root.iconphoto(False,tk.PhotoImage(file=CONFIG['icon']))
@@ -232,7 +240,18 @@ def run_setting(info:tk.StringVar)->None:
     tk.Label(F2,text='大',font=('songti',10)).pack(side='left')
     root.protocol('WM_DELETE_WINDOW',get_value)
     root.mainloop()
-    
+
+def _run_game():
+    threading.Thread(target=run_game).start()
+
+def _run_setting(info:utils.Info):
+    global GLOBAL_SET
+    run_setting(GLOBAL_SET,info)
+
+def _run_help():
+    global GLOBAL_SET
+    run_help(GLOBAL_SET)
+
 def _run_skin(info:tk.StringVar):
     global GLOBAL_SET
     run_skin(GLOBAL_SET,info)
@@ -249,10 +268,16 @@ def _run_scene_loading(info:tk.StringVar):
     global GLOBAL_SET
     run_scene_loading(GLOBAL_SET,info)
 
+def _run_net():
+    global GLOBAL_SET
+    run_net(GLOBAL_SET)
 
 def run_main():
     def quit_main():
-        quit_game()
+        for _,value in GLOBAL_SET.win_open.items():
+            if value:
+                messagebox.showwarning('警示','请关闭其他所有子窗口再关闭主程序。')
+                return
         root.destroy()
 
     SIGN_POS = CONFIG['main']['sign_pos']
@@ -284,25 +309,25 @@ def run_main():
     sign_tx = canvas.create_text(*SIGN_POS,font=('arial',14,'bold'),anchor='nw',fill="white")
     canvas.insert(sign_tx,1,'Made by gitouni')
     account_icon = interface.Image_load(CONFIG['main']['account_icon'],small_size)
-    button0 = tk.Button(root,text='游戏账户',font=('heiti',14,'bold'),command=lambda info=statustext: _run_account(info),background='white',
+    button0 = tk.Button(root,text='游戏账户',font=('heiti',14,'bold'),command=lambda info=statustext: _run_account(info),
                         image=account_icon,compound='left')
     normal_lvl_icon = interface.Image_load(CONFIG['main']['normal_level_icon'],small_size)
-    button1 = tk.Button(root,text='普通模式',font=('heiti',14,'bold'),command=lambda info=statustext: _run_scene_loading(info),background='white',
+    button1 = tk.Button(root,text='普通模式',font=('heiti',14,'bold'),command=lambda info=statustext: _run_scene_loading(info),
                         image=normal_lvl_icon,compound='left')
     start_icon = interface.Image_load(CONFIG['main']['start_icon'],small_size)
-    button2 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=run_game,background='white',
+    button2 = tk.Button(root,text='开始游戏',font=('heiti',14,'bold'),command=_run_game,
                         image=start_icon,compound='left')
     lab_icon = interface.Image_load(CONFIG['main']['lab_icon'],small_size)
-    button3 = tk.Button(root,text='实验中心',font=('heiti',14,'bold'),command=_run_lab,background='white',
+    button3 = tk.Button(root,text='实验中心',font=('heiti',14,'bold'),command=_run_lab,
                         image=lab_icon,compound='left')
     net_icon = interface.Image_load(CONFIG['main']['net_icon'],small_size)
-    button4 = tk.Button(root,text='联机对战',font=('heiti',14,'bold'),command=run_net,background='white',
+    button4 = tk.Button(root,text='联机对战',font=('heiti',14,'bold'),command=_run_net,
                         image=net_icon,compound='left')
     help_img = interface.Image_load(CONFIG['main']['help_icon'],small_size)
     setting_img = interface.Image_load(CONFIG['main']['setting_icon'],small_size)
     skin_img = interface.Image_load(CONFIG['main']['skin_icon'],small_size)
-    help_button = tk.Button(root,bg=CONFIG['main']['help_color'],image=help_img,command=run_help)
-    setting_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=setting_img,command=lambda info=statustext: run_setting(info))
+    help_button = tk.Button(root,bg=CONFIG['main']['help_color'],image=help_img,command=_run_help)
+    setting_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=setting_img,command=lambda info=statustext: _run_setting(info))
     skin_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=skin_img,command=lambda info=statustext: _run_skin(info))
     help_button.pack()
     setting_button.pack()
@@ -338,7 +363,7 @@ def init_pygame():
     if not pygame.font.get_init():
         pygame.font.init() # 初始化字体设置
     if not pygame.mixer.get_init():
-        pygame.mixer.init(11025)  # 音乐初始化
+        pygame.mixer.init(20000,buffer=1024)  # 音乐初始化
         pygame.mixer.music.set_volume(1)  # 音量初始化
 
 # 运行游戏界面
@@ -347,7 +372,11 @@ def run_game():
         start = messagebox.askyesno("Warning","您尚未加载任何账户，游戏记录将无法被保存，是否继续？")
         if not start:
             return
+    if GLOBAL_SET.win_open['game']:
+        messagebox.showerror('警示','请勿重复打开窗口')
+        return
     init_pygame()
+    GLOBAL_SET.win_open['game'] = True
     GLOBAL_SET.has_saved = False
     player_info = Info(gameset.gold,gameset.diamond)
     player_info.has_success = False
@@ -424,6 +453,7 @@ def quit_game():
         gameset.save()
     pygame.font.quit()
     pygame.quit()
+    GLOBAL_SET.win_open['game'] = False
     clear_sprite(enemyfire_Group)
     clear_sprite(enemy_Group)
     clear_sprite(bullet_Group)
