@@ -1,9 +1,9 @@
 # pygame飞机大战:airplane:终极版
 [中文版](https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/c77bc77efeee6f9910b62cec382c28be3b2be28d/README.md) | [English](https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/c77bc77efeee6f9910b62cec382c28be3b2be28d/README_EN.md)
 ### 介绍
-<img src="https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/a777c40a73c9d66d4d67f5e8e8d95e7cd44297b7/screenshots/ex1.jpg" width="300px">
-Pygame飞机大战终极版是一款基于Pygame引擎开发的，涵盖GUI界面、账户系统、奖励系统、自定义场景、武器升级系统的炫酷飞机大战游戏。一些游戏元素:video_game:展示如下：
+Pygame飞机大战终极版是一款基于Pygame引擎开发的，涵盖GUI界面、账户系统、奖励系统、自定义场景、武器升级系统、联机对战的炫酷飞机大战游戏。一些游戏元素:video_game:展示如下：
 
+<img src="https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/a777c40a73c9d66d4d67f5e8e8d95e7cd44297b7/screenshots/ex1.jpg" width="300px">
 * 射击音效，击中音效，爆炸音效，奖励音效
 * 玩家状态：血条、能量和冷却
 * 玩家奖励：黄金:moneybag:、钻石
