@@ -4,15 +4,16 @@
 Pygame飞机大战终极版是一款基于Pygame引擎开发的，涵盖GUI界面、账户系统、奖励系统、自定义场景、武器升级系统、联机对战的炫酷飞机大战游戏。
 
 一些游戏元素:video_game:展示如下：
-主界面
 
-<img src="screenshots/main_GUI.jpg",width="100px">
 
-游戏界面
-<img src="screenshots/ex1.jpg" width="300px">
+**主界面**
+<img src="https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/beta/screenshots/main_GUI.jpg" width="300px">
 
-联机聊天界面
-<img src="screenshots/chat.jpg",width="500px">
+**游戏界面**
+<img src="https://github.com/gitouni/pygame-aircraft-wars-Ultra/blob/beta/screenshots/ex1.jpg" width="300px">
+
+**联机聊天界面**
+![联机聊天界面](screenshots/chat.jpg)
 
 * 射击音效，击中音效，爆炸音效，奖励音效
 * 玩家状态：血条、能量和冷却
