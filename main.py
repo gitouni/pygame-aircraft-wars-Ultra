@@ -81,9 +81,11 @@ def run_setting(globalset:utils.Setting,info:tk.StringVar)->None:
 
 def _run_game(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET,gameset
-    statustext.set('游戏运行中，请勿操作其他按钮。')
     root.update()  # 按钮弹起，显示状态栏
+    root.withdraw()
     run_game(gameset,GLOBAL_SET,SIM_INTERVAL,VOLUME)
+    root.deiconify()
+    statustext.set('游戏正常退出。')
 
 def _run_setting(info:utils.Info):
     global GLOBAL_SET
@@ -117,8 +119,12 @@ def run_main():
     def quit_main():
         for _,value in GLOBAL_SET.win_open.items():
             if value:
-                messagebox.showwarning('警示','请关闭其他所有子窗口再关闭主程序。')
-                return
+                res = messagebox.askyesno('警示','请关闭其他所有子窗口再关闭主程序, 否则存在一定风险。\n是否仍要关闭? ')
+                if not res:
+                    return
+                else:
+                    root.destroy()
+                    return
         root.destroy()
     init_pygame()
     SIGN_POS = CONFIG['main']['sign_pos']
