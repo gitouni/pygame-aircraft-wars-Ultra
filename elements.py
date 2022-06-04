@@ -26,6 +26,7 @@ enemy_path = CONFIG['enemy']['path']
 enemyfire_path = CONFIG['enemyfire']['path']
 bullet_path = CONFIG['bullet']['path']
 player_dict = CONFIG['player']
+skin_dict = CONFIG['skin']
 
 enemy_dict = utils.csv2dict(CONFIG['enemy']['setting'])
 enemyfire_dict = utils.csv2dict(CONFIG['enemyfire']['setting'])
@@ -51,7 +52,7 @@ class fighter(pygame.sprite.Sprite):
         self.hook_background_group = hook_background_group
         self.speed = 6 * sim_interval/10.0
         self.rol = 0 # 横向倾斜角
-        self.player_png = utils.csv2dict(player_dict['png_path'][index])
+        self.player_png = utils.csv2dict(skin_dict['png_data'][index])
         self.agl = 0
         self.img_ad = os.path.join('player_png',self.player_png['LEFT'][self.agl])
         self.size = (55,104)
@@ -321,13 +322,17 @@ class missile(pygame.sprite.Sprite):
     def find_target(self):
         # 寻找目标
         target_list = list()
-        for enemy0 in self.hook_enemy_group.sprites():
-            assert isinstance(enemy0,enemy),'Target type must be enemy'
-            if enemy0.targeted == False and not utils.transgress_detect(enemy0.rect):
-                target_list.append(enemy0)
+        for emy in self.hook_enemy_group.sprites():
+            if emy.targeted == False and not utils.transgress_detect(emy.rect):
+                target_list.append(emy)
                 # 加入可攻击组和序号
         if target_list:
-            self.target = target_list[np.random.randint(0,len(target_list))]
+            min_i = 0
+            min_dis = utils.norm(utils.tuple_minus(target_list[0].rect.center,self.rect.center))
+            for i,emy in enumerate(target_list[1:]):
+                if utils.norm(utils.tuple_minus(emy.rect.center,self.rect.center)) < min_dis:
+                    min_i = i
+            self.target = target_list[min_i]
         else:
             self.target = None
     def rotate(self):

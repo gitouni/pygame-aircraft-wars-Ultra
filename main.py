@@ -17,7 +17,7 @@ import yaml
 import utils
 # interface import
 import interface
-from interface import run_lab, run_help, run_account, run_scene_loading, run_skin, run_net
+from interface import run_lab, run_help, run_account, run_scene_loading, run_skin, run_net, run_log_video
 import tkinter as tk
 from tkinter import messagebox
 from engine import AutoGameRun  # game runing engine
@@ -82,10 +82,21 @@ def run_setting(globalset:utils.Setting,info:tk.StringVar)->None:
 def _run_game(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET,gameset
     root.update()  # 按钮弹起，显示状态栏
-    root.withdraw()
-    run_game(gameset,GLOBAL_SET,SIM_INTERVAL,VOLUME)
-    root.deiconify()
-    statustext.set('游戏正常退出。')
+    # root.withdraw()
+    # try:
+    run_game(gameset,GLOBAL_SET,SIM_INTERVAL,VOLUME,LOGGING)
+    # root.deiconify()
+    statustext.set('游戏正常退出')
+    # except:
+    #     root.deiconify()
+    #     statustext.set('游戏异常退出')
+
+def _run_video(statustext:tk.StringVar,root:tk.Tk):
+    global GLOBAL_SET
+    root.update()
+    run_log_video(GLOBAL_SET,SIM_INTERVAL,VOLUME)
+    statustext.set('录像正常退出')
+    
 
 def _run_setting(info:utils.Info):
     global GLOBAL_SET
@@ -116,15 +127,21 @@ def _run_net():
     run_net(GLOBAL_SET)
 
 def run_main():
+    global SIM_INTERVAL,VOLUME,LOGGING
     def quit_main():
+        gameset.setting['sim_interval'] = SIM_INTERVAL
+        gameset.setting['volume'] = VOLUME
+        gameset.setting['log'] = LOGGING
         for _,value in GLOBAL_SET.win_open.items():
             if value:
                 res = messagebox.askyesno('警示','请关闭其他所有子窗口再关闭主程序, 否则存在一定风险。\n是否仍要关闭? ')
                 if not res:
                     return
                 else:
+                    gameset.save()
                     root.destroy()
                     return
+        gameset.save()
         root.destroy()
     init_pygame()
     SIGN_POS = CONFIG['main']['sign_pos']
@@ -134,6 +151,7 @@ def run_main():
     normal_level_pos = CONFIG['main']['normal_level_pos']
     lab_pos = CONFIG['main']['lab_pos']
     net_pos = CONFIG['main']['net_pos']
+    log_pos = CONFIG['main']['log_pos']
     help_pos = CONFIG['main']['help_pos']
     setting_pos = CONFIG['main']['setting_pos']
     button_size = CONFIG['main']['button_size']
@@ -173,15 +191,15 @@ def run_main():
     help_img = interface.Image_load(CONFIG['main']['help_icon'],small_size)
     setting_img = interface.Image_load(CONFIG['main']['setting_icon'],small_size)
     skin_img = interface.Image_load(CONFIG['main']['skin_icon'],small_size)
+    log_img = interface.Image_load(CONFIG['main']['log_icon'],small_size)
     help_button = tk.Button(root,bg=CONFIG['main']['help_color'],image=help_img,command=_run_help)
     setting_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=setting_img,command=lambda info=statustext: _run_setting(info))
     skin_button = tk.Button(root,bg=CONFIG['main']['setting_color'],image=skin_img,command=lambda info=statustext: _run_skin(info))
-    help_button.pack()
-    setting_button.pack()
-    skin_button.pack()
+    log_button = tk.Button(root,bg=CONFIG['main']['log_color'],image=log_img,command=lambda info=statustext, root=root: _run_video(info,root))
     canvas.create_window(*help_pos,width=small_size[0],height=small_size[1],window=help_button)
     canvas.create_window(*setting_pos,width=small_size[0],height=small_size[1],window=setting_button)
     canvas.create_window(*skin_pos,width=small_size[0],height=small_size[1],window=skin_button)
+    canvas.create_window(*log_pos,width=small_size[0],height=small_size[1],window=log_button)
     canvas.create_window(*account_pos,width=button_size[0],height=button_size[1],window=button0)
     canvas.create_window(*normal_level_pos,width=button_size[0],height=button_size[1],window=button1)
     canvas.create_window(*play_pos,width=button_size[0],height=button_size[1],window=button2)
@@ -198,6 +216,14 @@ def run_main():
             account_tuple = list(zip(account_file,account_time))
             recent_file = sorted(account_tuple,key=lambda ele: ele[1],reverse=True)[0][0]
             gameset.load(os.path.join(account_path,recent_file))
+            try:
+                SIM_INTERVAL = gameset.setting['sim_interval']
+                VOLUME = gameset.setting['volume']
+                LOGGING = gameset.setting['log']
+            except KeyError:
+                gameset.setting['sim_interval'] = SIM_INTERVAL
+                gameset.setting['volume'] = VOLUME
+                gameset.setting['log'] = LOGGING
             recent_name = os.path.splitext(recent_file)[0]
             statustext.set("欢迎, {}".format(recent_name))
     root.protocol('WM_DELETE_WINDOW', quit_main)
@@ -213,7 +239,7 @@ def init_pygame():
         pygame.mixer.music.set_volume(1)  # 音量初始化
 
 # 运行游戏界面
-def run_game(gameset:utils.Setting,globalset:utils.Info,sim_interval:float,volume:float):
+def run_game(gameset:game_set,globalset:utils.Setting,sim_interval:float,volume:float,log:bool):
     if not gameset.path:
         start = messagebox.askyesno("Warning","您尚未加载任何账户，游戏记录将无法被保存，是否继续？")
         if not start:
@@ -221,7 +247,10 @@ def run_game(gameset:utils.Setting,globalset:utils.Info,sim_interval:float,volum
     if globalset.win_open['game']:
         messagebox.showerror('警示','请勿重复打开窗口')
         return
-    game_run = AutoGameRun(gameset,globalset,sim_interval,volume)
+    gameset.setting['sim_interval'] = sim_interval
+    gameset.setting['volume'] = volume
+    gameset.setting['log'] = log
+    game_run = AutoGameRun(gameset,globalset,sim_interval,volume,log=log)
     game_run.run()
     del game_run
     return

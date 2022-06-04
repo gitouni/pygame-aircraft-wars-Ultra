@@ -1,4 +1,6 @@
+import os
 import time
+from tkinter import messagebox, simpledialog
 import pygame
 # extend import
 import pygame.event
@@ -12,6 +14,7 @@ import pygame.font
 import pygame.display
 # game import
 import json
+import pickle as pkl
 from Game_set import game_set
 from elements import fighter
 import yaml
@@ -35,9 +38,12 @@ class AutoGameRun:
         self.scene_time = []
         self.scene_list = []
         self.scene_class = dict(scene1=scene1,scene2=scene2)
-        self.init_time = pygame.time.get_ticks()
+        self.init_time = 0
         # setting
         self.gameset = gameset
+        self.gameset.setting['sim_interval'] = sim_interval
+        self.gameset.setting['volume'] = volume
+        self.gameset.setting['log'] = log
         self.globalset = globalset
         self.sim_interval = sim_interval
         self.volume = volume
@@ -47,7 +53,7 @@ class AutoGameRun:
         self.gamescreen_size = self.CONFIG['setting']['gamescreen_size']
         self.screen_bg_color = self.CONFIG['setting']['background_color']
         
-        self.init_time = pygame.time.get_ticks()
+    def init_display(self):
         background_img = pygame.image.load(self.globalset.background_jpg)  # 背景图片
         bg_size = background_img.get_size()
         self.bg_resize = (self.screen_size[0],int(self.screen_size[0]/bg_size[0]*bg_size[1]))
@@ -66,15 +72,15 @@ class AutoGameRun:
             pygame.mixer.init(20000,buffer=1024)  # 音乐初始化
             pygame.mixer.music.set_volume(1)  # 音量初始化
     
-    def system_update_time(self):
-        self.init_time = pygame.time.get_ticks()
+    def system_reset_time(self):
+        self.init_time = 0
     
     def scene_check(self,now):
         remove_id = []
         for i,scene in enumerate(self.scene_list):
             assert isinstance(scene,(scene1,scene2))
             if not scene.need_to_end:
-                if now - self.init_time > self.scene_time[i]*1000:
+                if now - self.init_time >= self.scene_time[i]*1000:
                     scene.update()
             else:
                 remove_id.append(i)
@@ -86,9 +92,7 @@ class AutoGameRun:
 
     def create_scene(self,player:fighter,player_info:utils.Info):
         max_scene_time = 0
-        with open('debub_scene.json','w')as f:
-            json.dump(self.globalset.scenes,f)
-        for i,scene_info in enumerate(self.globalset.scenes):
+        for scene_info in self.globalset.scenes:
             self.scene_class[scene_info['type']].create(scene_info,self.scene_list,self.scene_time,self.background,
                                                 hook_player=player,hook_global_info=player_info,
                                                 hook_enemy_group=self.enemy_Group,
@@ -145,7 +149,7 @@ class AutoGameRun:
             
         def succeeded():
             threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.CONFIG['setting']['success_sound_file']),self.volume)).start()
-
+        self.init_display()
         self.globalset.win_open['game'] = True
         self.globalset.has_saved = False
         player_info = utils.Info(self.gameset.gold,self.gameset.diamond)
@@ -164,48 +168,60 @@ class AutoGameRun:
         player.blitme()
         pygame.display.flip()
         max_scene_time = self.create_scene(player,player_info)
-        now = pygame.time.get_ticks()
-        self.system_update_time()
+        self.system_reset_time()
+        now = self.init_time
         running = True
+        blit_ad = 0
+        now = self.init_time
+        self.globalset.fighter_state.clear()
         while running:
             # 监视屏幕
+            last_time = pygame.time.get_ticks()
             running = self.event_check(player)
             # 让最近绘制的屏幕可见
-            if(pygame.time.get_ticks()-now > self.sim_interval): 
-                now = pygame.time.get_ticks()
-                blit_ad = int((now-self.init_time)/1000*self.bg_rollv % self.bg_resize[1])
-                self.background.blit(self.background_img,(0,blit_ad-self.bg_resize[1]+30))
-                self.background.blit(self.background_img,(0,blit_ad+30))
-                self.scene_check(now)
-                self.collide_detect(player)            
-                self.bullet_Group.update()
-                if player.alive_:
-                    player.update()    
-                self.enemyfire_Group.update()
-                self.background_Group.update()
-                self.screen.blit(self.background,(0,30))
-                self.draw_statebar(player,player_info) # 更新状态栏
-                if (not player.alive_):
-                    if not player_info.has_fail:
-                        failed()
-                        player_info.has_fail = True
-                    elif (now - self.init_time) % 1000 > 500:
-                        display_font_surface = self.display_font.render('Mission Failed',True,[255,0,0])
-                        self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
-                if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
-                    if not player_info.has_success:
-                        succeeded()
-                        player_info.has_success = True
-                    elif (now - self.init_time) % 1000 > 500:
-                        success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
-                        self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
-                pygame.display.flip()  # 更新画面
+            now += self.sim_interval
+            if self.is_log:
+                self.globalset.log_fighter(dict(left=player.moving_left,right=player.moving_right,up=player.moving_up,down=player.moving_down),
+                                            player.shooting,
+                                            [player.shoot1,player.shoot2,player.shoot3],
+                                            player.launching)
+            blit_ad += self.sim_interval/1000*self.bg_rollv % self.bg_resize[1]
+            blit_ad %= self.bg_resize[1]
+            self.background.blit(self.background_img,(0,round(blit_ad)-self.bg_resize[1]+30))
+            self.background.blit(self.background_img,(0,round(blit_ad)+30))
+            self.scene_check(now)
+            self.collide_detect(player)            
+            self.bullet_Group.update()
+            if player.alive_:
+                player.update()    
+            self.enemyfire_Group.update()
+            self.background_Group.update()
+            self.screen.blit(self.background,(0,30))
+            self.draw_statebar(player,player_info,now) # 更新状态栏
+            if (not player.alive_):
+                if not player_info.has_fail:
+                    failed()
+                    player_info.has_fail = True
+                elif (now - self.init_time) % 1000 > 500:
+                    display_font_surface = self.display_font.render('Mission Failed',True,[255,0,0])
+                    self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
+            if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
+                if not player_info.has_success:
+                    succeeded()
+                    player_info.has_success = True
+                elif (now - self.init_time) % 1000 > 500:
+                    success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
+                    self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
+            pygame.display.flip()  # 更新画面
+            delta = pygame.time.get_ticks() - last_time
+            if delta < self.sim_interval:
+                time.sleep((self.sim_interval-delta)/1000)
         self.gameset.gold = int(player_info.gold)
         self.gameset.diamond = int(player_info.diamond)
         self.gameset.high_score = max(self.gameset.high_score,player_info.score)
         self.quit_game()
         
-    def draw_statebar(self,player:fighter,player_info:utils.Info):
+    def draw_statebar(self,player:fighter,player_info:utils.Info,now:int):
         # 分隔线
         pygame.draw.rect(self.screen,(0,0,0),pygame.Rect((0,0),self.statebar_size))
         pygame.draw.line(self.screen,(0,255,0),(0,self.statebar_size[1]-1),\
@@ -254,11 +270,12 @@ class AutoGameRun:
         gold_font_surface = gold_font.render(utils.pretty_number(player_info.gold),True,[255,255,255])
         diamond_font_surface = diamond_font.render(utils.pretty_number(player_info.diamond),True,[255,255,255])
         score_font_surface = score_font.render(utils.pretty_number(player_info.score),True,[180,255,255])
-        time_font_surface = time_font.render("{:.2f}s".format((pygame.time.get_ticks()-self.init_time)/1000.0),True,[255,100,100])
+        time_font_surface = time_font.render("{:.2f}s".format((now-self.init_time)/1000.0),True,[255,100,100])
         self.screen.blit(gold_font_surface,GOLD_POS)
         self.screen.blit(diamond_font_surface,DIAMOND_POS)
         self.screen.blit(score_font_surface,SCORE_POS)
         self.screen.blit(time_font_surface,TIME_POS)
+    
     
     @staticmethod
     def event_check(player:fighter) -> bool:
@@ -312,3 +329,144 @@ class AutoGameRun:
         self.clear_sprite()
         self.scene_list.clear()
         self.scene_time.clear()  
+        if not self.is_log:
+            return
+        date = time.localtime(time.time())
+        date_str = time.strftime(r"%Y-%m-%d-%H-%M-%S",date)
+        save_name = simpledialog.askstring('保存录像','请键入保存录像的名称\n空值或Cancel表示不保存。',initialvalue=date_str)
+        if not save_name:
+            return
+        os.makedirs('video',exist_ok=True)
+        with open(os.path.join('video',save_name+'.p'),'wb')as f:
+            pkl.dump(dict(meta=dict(time=time.strftime(r"%Y-%m-%d %H:%M:%S",date),
+                                     sim_interval=self.sim_interval,
+                                     scene=self.globalset.scene_path,
+                                     player_skin=self.globalset.player_index,
+                                     player_dict=self.gameset.__dict__),
+                                    state=self.globalset.fighter_state),f)
+            
+class LogGameRun(AutoGameRun):
+    def __init__(self,gameset:game_set,globalset:utils.Setting,
+                 sim_interval:float,volume:float,log_path:str,config_path='config.yml'):
+        super(LogGameRun,self).__init__(gameset,globalset,
+                 sim_interval,volume,config_path)
+        with open(log_path,'rb')as f:
+            self.log_dict = pkl.load(f)
+        with open(self.log_dict['meta']['scene'],'r')as f:
+            scene = json.load(f)
+        self.sim_interval = self.log_dict['meta']['sim_interval']
+        self.gameset.__dict__ = self.log_dict['meta']['player_dict']
+        self.globalset.background_jpg = scene['meta']['background']
+        self.globalset.scenes = scene['scene']
+        self.globalset.player_index = self.log_dict['meta']['player_skin']
+        self.index = 0
+    
+    @staticmethod  
+    def event_check(player:fighter,state:dict) -> bool:
+        running = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:  # 检测到按退出键，实施软退出
+                running = False
+                return False
+        if player.alive_: # 玩家阵亡时不再响应控制按键
+            player.moving_down = state['moving']['down']
+            player.moving_up = state['moving']['up']
+            player.moving_left = state['moving']['left']
+            player.moving_right = state['moving']['right']
+            player.shoot1 = state['shoot_mode'][0]
+            player.shoot2 = state['shoot_mode'][1]
+            player.shoot3 = state['shoot_mode'][2]
+            player.shooting = state['shoot']
+            player.launching = state['launch']
+        return running
+    
+    def quit_game(self):
+        pygame.mixer.quit()
+        pygame.font.quit()
+        pygame.quit()
+        self.globalset.win_open['game'] = False
+        self.clear_sprite()
+        self.scene_list.clear()
+        self.scene_time.clear() 
+     
+    def run(self):
+        def failed():
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.CONFIG['setting']['fail_sound_file']),self.volume)).start()
+            
+        def succeeded():
+            threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.CONFIG['setting']['success_sound_file']),self.volume)).start()
+        self.init_display()
+        self.globalset.win_open['game'] = True
+        self.globalset.has_saved = False
+        player_info = utils.Info(self.gameset.gold,self.gameset.diamond)
+        player_info.has_success = False
+        player_info.has_fail = False
+        pygame.display.set_caption("pygame-aircraft-ultra")
+        pygame.display.set_icon(pygame.image.load(self.CONFIG['setting']['game_ico']))
+        # 渐变显示窗口
+        for i in range(11):
+            self.screen.fill(tuple([255*(1-i/10) for _ in self.screen_bg_color]))
+            time.sleep(0.03)
+            pygame.display.flip()
+        #开始游戏
+        player = fighter(self.background,self.screen,self.enemy_Group,self.bullet_Group,self.background_Group,self.sim_interval,self.volume,self.globalset.player_index)
+        player.game_set(self.gameset) # 使用该游戏设置
+        player.blitme()
+        pygame.display.flip()
+        max_scene_time = self.create_scene(player,player_info)
+        running = True
+        size_state = len(self.log_dict['state'])
+        blit_ad = 0
+        self.system_reset_time()
+        now = self.init_time
+        while running:
+            # 监视屏幕
+            last_time = pygame.time.get_ticks()
+            now += self.sim_interval
+            if self.index < size_state:
+                state = self.log_dict['state'][self.index]
+                self.index += 1
+            else:
+                state = self.log_dict['state'][-1]
+                state['shoot'] = False
+                state['launch'] = False
+            running = self.event_check(player,state)
+            # 让最近绘制的屏幕可见
+            blit_ad += self.sim_interval/1000*self.bg_rollv % self.bg_resize[1]
+            blit_ad %= self.bg_resize[1]
+            self.background.blit(self.background_img,(0,round(blit_ad)-self.bg_resize[1]+30))
+            self.background.blit(self.background_img,(0,round(blit_ad)+30))
+            self.scene_check(now)
+            self.collide_detect(player)            
+            self.bullet_Group.update()
+            if player.alive_:
+                player.update()    
+            self.enemyfire_Group.update()
+            self.background_Group.update()
+            self.screen.blit(self.background,(0,30))
+            self.draw_statebar(player,player_info,now) # 更新状态栏
+            if (not player.alive_):
+                if not player_info.has_fail:
+                    failed()
+                    player_info.has_fail = True
+                elif (now - self.init_time) % 1000 > 500:
+                    display_font_surface = self.display_font.render('Mission Failed',True,[255,0,0])
+                    self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
+            if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
+                if not player_info.has_success:
+                    succeeded()
+                    player_info.has_success = True
+                elif (now - self.init_time) % 1000 > 500:
+                    success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
+                    self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
+            pygame.display.flip()  # 更新画面
+            delta = pygame.time.get_ticks() - last_time
+            if delta < self.sim_interval:
+                time.sleep((self.sim_interval-delta)/1000)
+        self.gameset.gold = int(player_info.gold)
+        self.gameset.diamond = int(player_info.diamond)
+        self.gameset.high_score = max(self.gameset.high_score,player_info.score)
+        self.quit_game()
+        
+        
+            

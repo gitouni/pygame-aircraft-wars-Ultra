@@ -15,6 +15,7 @@ import threading
 import time
 import network
 import re
+import engine
 
 
 def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
@@ -92,22 +93,6 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
         img = Image_load(png_path,CONFIG['canvas_size'])
         canvas.create_image(0,0,anchor='nw',image=img)
         
-    # def movie():
-    #     nonlocal img
-    #     index = listbox.curselection()
-    #     if len(index) == 0:
-    #         return  # 静默
-    #     index = index[0]
-    #     png_list = []
-    #     for path in skin_pack_list[index]['LEFT']:
-    #         png_list.append(Image_load(os.path.join(CONFIG['path'],path)),CONFIG['canvas_size'])
-    #     png_list.reverse()
-    #     for path in skin_pack_list[index]['RIGHT'][1:]:
-    #         png_list.append(Image_load(os.path.join(CONFIG['path'],path)),CONFIG['canvas_size'])
-        
-    # def thread_movie(png_list):
-    #     nonlocal img
-        
     def on_closing():
         globalset.win_open['skin'] = False
         root.destroy()
@@ -153,6 +138,74 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
     png_path = os.path.join(CONFIG['path'],skin_pack_list[globalset.player_index]['LEFT'][0])
     img = Image_load(png_path,CONFIG['canvas_size'])
     canvas.create_image(0,0,anchor='nw',image=img)
+    root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.mainloop()
+
+def run_log_video(globalset:utils.Setting,sim_interval:float,volume:float):
+    def load(event=None):
+        root.update()
+        index = listbox.curselection()
+        if len(index) == 0:
+            messagebox.showwarning('警告','未选择任何录像。')
+            return
+        index = index[0]
+        video_path = log_list[index]
+        gamerun = engine.LogGameRun(game_set(),globalset,sim_interval,volume,
+                                    os.path.join('video',video_path))
+        gamerun.run()
+    
+    def delete():
+        index = listbox.curselection()
+        if len(index) == 0:
+            messagebox.showwarning('警告','未选择任何录像。')
+            return
+        index = index[0]
+        res = messagebox.askyesno('提示','是否删除此记录？')
+        if not res:
+            return
+        video_path = log_list[index]
+        os.remove(os.path.join('video',video_path))
+        listbox.delete(index)
+        log_list.pop(index)
+        
+    def on_closing():
+        globalset.win_open['log'] = False
+        root.destroy()
+        
+    if globalset.win_open['log']:
+        messagebox.showerror('警示','请勿重复打开窗口。')
+        return
+    root = tk.Toplevel()
+    globalset.win_open['log'] = True
+    with open('config.yml','r')as f:
+        CONFIG = yaml.load(f,yaml.SafeLoader)['log']
+    log_list = utils.recent_sort('video')
+    root.title("游戏录像")
+    root.iconphoto(True,tk.PhotoImage(file=CONFIG['icon']))
+    F1 = tk.Frame(root)
+    F1.pack(side=tk.LEFT)
+    F2 = tk.Frame(root)
+    F2.pack(side=tk.RIGHT)
+    F11 = tk.Frame(F1)
+    F11.pack(side=tk.TOP)
+    F12 = tk.Frame(F1)
+    F12.pack(side=tk.BOTTOM)
+    button1 = tk.Button(F11,text='播放',bg='white',font=('songti',12),command=load)
+    button1.pack(side=tk.LEFT,padx=10)
+    button2 = tk.Button(F11,text='删除',bg='white',font=('songti',12),command=delete)
+    button2.pack(side=tk.LEFT,padx=10)
+    button3 = tk.Button(F11,text='返回',bg='white',font=('songti',12),command=on_closing)
+    button3.pack(side=tk.RIGHT,padx=10)
+    scbar = tk.Scrollbar(F12, orient=tk.VERTICAL)
+    listbox = tk.Listbox(F12,yscrollcommand=scbar.set,
+                                 selectmode=tk.SINGLE,width=23,height=15,
+                                 font=('songti',12))
+    scbar.config(command=listbox.yview)
+    scbar.pack(side=tk.RIGHT,fill=tk.Y)
+    listbox.pack(fill=tk.BOTH)
+    listbox.bind("<Double-Button-1>",load)
+    for path in log_list:
+        listbox.insert(tk.END,os.path.splitext(path)[0])
     root.protocol('WM_DELETE_WINDOW', on_closing)
     root.mainloop()
 
@@ -293,16 +346,17 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
             res = messagebox.askyesno('提示',"该账户已存在, 是否覆盖？")
             if not res:
                 return
-        with open(save_path,'w')as f:
-            json.dump(gameset.__dict__,f)
         newset = game_set()
         gameset.__dict__ = deepcopy(newset.__dict__)
         gameset.gold = CONFIG['account']['initial_gold']
         gameset.diamond = CONFIG['account']['initial_diamond']
         gameset.path = os.path.join(account_path,name_fmt.format(name=name))
+        with open(save_path,'w')as f:
+            json.dump(gameset.__dict__,f)
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['exit_sound_file']),volume)).start()
         messagebox.showinfo("提示","账户创建完成, 请利用初始资源去实验室升级吧!")
         info.set('欢迎体验本游戏，{}'.format(name))
+        globalset.win_open['account'] = False
         root.destroy()
     def load(event=None)->None:
         nonlocal gameset
@@ -323,8 +377,7 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
         gameset.path = filepath
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(CONFIG['account']['save_sound_file']),volume)).start()
         messagebox.showinfo('提示','加载成功!')
-        info.set("欢迎回来，{}".format(os.path.splitext(account)[0]))
-        root.destroy()
+        on_closing()
     def save()->None:
         nonlocal globalset
         globalset.has_saved = True
@@ -390,11 +443,12 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
     account_listbox.pack(fill=tk.BOTH)
     if not exist_account:
         button2.config(state='disabled')
-    accounts = utils.account_sort(account_path)
-    cur_index = accounts.index(os.path.basename(gameset.path))
-    for account in accounts:
-        account_listbox.insert(tk.END,os.path.splitext(account)[0])
-    account_listbox.selection_set(cur_index)
+    if len(os.listdir(account_path)) > 0:
+        accounts = utils.recent_sort(account_path)
+        cur_index = accounts.index(os.path.basename(gameset.path))
+        for account in accounts:
+            account_listbox.insert(tk.END,os.path.splitext(account)[0])
+        account_listbox.selection_set(cur_index)
     root.protocol('WM_DELETE_WINDOW',on_closing)
     root.mainloop()
 

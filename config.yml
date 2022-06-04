@@ -28,7 +28,7 @@ account:
   error_sound_file: Sound_effect/error.wav
   exit_sound_file: Sound_effect/tip.wav
   initial_gold: 20000
-  initial_diamond: 0
+  initial_diamond: 200
 
 map:
   path: scenes/
@@ -69,11 +69,14 @@ main:
   help_icon: icon_png/help.png
   setting_icon: icon_png/setting.png
   skin_icon: icon/skin.png
+  log_icon: icon/log.png
+  log_pos: [130,290]
   skin_pos: [160,290]
   help_pos: [190,290]
   setting_pos: [220,290]
   help_color: "#2C3B35"
   setting_color: "#2C3B35"
+  log_color: "#2C3B35"
   exit_sound_file: Sound_effect/tip.wav
 
 help:
@@ -92,8 +95,8 @@ help:
   help_note_txt: text/help_note.txt
 
 set:
-  sim_interval_list: [7.5,10,15,30] 
-  screen_size: [200,100]
+  sim_interval_list: [10,15,30] 
+  screen_size: [200,150]
   steps: 20
   min_volume: 0
   max_volume: 1
@@ -102,16 +105,20 @@ set:
 skin:
   icon: icon/skin.png
   path: player_png
-  png_data: [data/player_1.txt, data/player_2.txt]
+  png_data: [data/player_1.txt, data/player_2.txt, data/player_3.txt, data/player_4.txt]
   canvas_size: [100,220]
   
 net:
   icon: icon/internet.png
   
+log:
+  icon: icon/log.png
 
 setting:
   font: 'times_new_roman'
   sim_interval: 15  # (ms)
+  volume: 1.0
+  log: false
   screen_size: [480,600]
   status_bar_size: [480,30]
   gamescreen_size: [480,570]
@@ -130,7 +137,6 @@ setting:
   success_font_pos: [70,300]
 
 player:
-  png_path: [data/player_1.txt, data/player_2.txt]
   missile:
     img: missile_png/missile0.png
     explode_sound_file: bomb_fire.wav
