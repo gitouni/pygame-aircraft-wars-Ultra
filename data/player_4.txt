@@ -1,0 +1,5 @@
+LEFT,RIGHT
+player_4_0.png,player_4_0.png
+player_4_L1.png,player_4_R1.png
+player_4_L2.png,player_4_R2.png
+player_4_L2.png,player_4_R3.png
