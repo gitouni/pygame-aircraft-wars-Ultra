@@ -103,8 +103,9 @@ class fighter(pygame.sprite.Sprite):
         self.cooling_recover = 0
         # 以上为游戏信息参数
         self.alive_ = True
-        self.shooting_time = pygame.time.get_ticks()
-        self.launching_time = pygame.time.get_ticks()
+        self.init_time = 0
+        self.shooting_time = 0
+        self.launching_time = 0
         self.mp3_path = player_dict['mp3_path']
         self.bullet_sound_file = os.path.join(self.mp3_path,player_dict['bullet_sound_file'])
         self.missile_sound_file = os.path.join(self.mp3_path,player_dict['missile_sound_file'])
@@ -131,9 +132,11 @@ class fighter(pygame.sprite.Sprite):
         """在指定位置绘制飞船"""
         self.screen.blit(self.image,self.rect)
     def update_shoot_time(self):
-        self.shooting_time = pygame.time.get_ticks()
+        self.shooting_time += self.sim_interval
+        self.shooting_time = min(self.shooting_time,self.shooting_cd)
     def update_launch_time(self):
-        self.launching_time = pygame.time.get_ticks()
+        self.launching_time += self.sim_interval
+        self.launching_time = min(self.launching_time,self.launching_cd)
     def update_bltpos(self):
         # 更新发射子弹的位置
         self.pos = self.rect.centerx,self.rect.centery
@@ -214,20 +217,22 @@ class fighter(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)
         self.mask = pygame.mask.from_surface(self.image)
         self.blitme()
+        self.update_launch_time()
+        self.update_shoot_time()
         if self.shooting:
-            if pygame.time.get_ticks()-self.shooting_time>self.shooting_cd:
+            if self.shooting_time-self.init_time >= self.shooting_cd:
                 if self.energy > (self.shoot1+self.shoot2+self.shoot3) and self.cooling > 0: # 满足要求时保持射击
                     self.shoot() # 射击
-                    self.update_shoot_time() # 更新时间
+                    self.shooting_time = 0
                     self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3)/self.shooting_cd*25 # 消耗能量
                     self.cooling -= (self.shoot1)/self.shooting_cd*25
                 else:
                     self.shooting = False
         if self.launching:
-            if pygame.time.get_ticks()-self.launching_time>self.launching_cd and\
+            if self.launching_time - self.init_time >= self.launching_cd and\
                self.energy >= 5 and self.cooling >= 3:
                    self.launch_missile()
-                   self.update_launch_time()
+                   self.launching_time = 0
             else:
                 self.launching = False
         self.update_state() # 回复能量和冷却
@@ -241,7 +246,7 @@ class fighter(pygame.sprite.Sprite):
         self.HP -= damage
         if self.HP <= 0:
             self.dead()
-            explode0 = explode(self.screen,self.rect.center)
+            explode0 = explode(self.screen,self.rect.center,self.sim_interval)
             self.hook_background_group.add(explode0)
             self.HP = 0
         threading.Thread(target=utils.thread_play_music,args=(self.hit_sound_file,0.3*self.volume_multiply)).start()
@@ -273,9 +278,11 @@ class bullet(pygame.sprite.Sprite):
         self.screen.blit(self.image,self.rect)
     def update(self):
         self.rect.move_ip(self.speed)
-        self.blitme()
         if utils.transgress_detect(self.rect): # 子弹越界删除
             self.kill()
+        else:
+            self.blitme()
+        
     def dead(self):
         self.kill()
 # 导弹类
@@ -308,15 +315,15 @@ class missile(pygame.sprite.Sprite):
         self.rect.midbottom = pos # 位置赋值
         self.explode_size = (30,30)
         self.target = None # 锁定的单位
-        self.time = pygame.time.get_ticks()
-        self.lifetime = self.time
+        self.init_time = 0
+        self.time = 0
         self.tracktime = tracktime
         self.damage = damage # 导弹伤害
         self.flying_time = flying_time # 追踪时间，单位秒
     def blitme(self):
         self.screen.blit(self.image,self.rect)
     def accelerate(self):
-        dt = pygame.time.get_ticks()-self.lifetime
+        dt = self.time - self.init_time
         dv = 1/self.ac_time*dt
         self.speed = min(self.init_speed+dv,self.speed_max) * self.sim_interval/10.0
     def find_target(self):
@@ -367,24 +374,27 @@ class missile(pygame.sprite.Sprite):
         if self.target is not None:
             if self.target.alive():
                 self.target.targeted = False # 解除敌机锁定
-        self.hook_background_group.add(explode(self.screen,self.rect.center,self.explode_size))
+        self.hook_background_group.add(explode(self.screen,self.rect.center,self.sim_interval,self.explode_size))
         threading.Thread(target=utils.play_music,args=(self.explode_music,self.volume_multiply)).start()
         self.kill()
     def update(self):
-        if pygame.time.get_ticks()-self.lifetime > self.flying_time*1000:# 超过追踪时间自爆
+        self.update_time()
+        life_duration = self.time - self.init_time
+        if life_duration > self.flying_time*1000:# 超过追踪时间自爆
             self.dead()
-        elif pygame.time.get_ticks() - self.lifetime > self.tracktime:
+        elif life_duration > self.tracktime:
             self.track_target() # 追踪目标
         else:
             self.accelerate()
             self.update_pos()
     def update_time(self):
-        self.time = pygame.time.get_ticks()
+        self.time += self.sim_interval
         
 # 敌军火力类
 class enemy_fire(pygame.sprite.Sprite):
-    def __init__(self,screen:pygame.Surface,hook_background_group:pygame.sprite.Group,location,speed,ID,speed_dir,scale=1,volume_multiply:float=1.0):
+    def __init__(self,screen:pygame.Surface,hook_background_group:pygame.sprite.Group,location,speed,ID,speed_dir,sim_interval,scale=1,volume_multiply:float=1.0):
         pygame.sprite.Sprite.__init__(self)  # 类继承
+        self.sim_interval = sim_interval
         self.screen = screen
         self.volume_multiply = volume_multiply
         self.hook_background_group = hook_background_group
@@ -422,7 +432,7 @@ class enemy_fire(pygame.sprite.Sprite):
             self.kill()    
     def dead(self):
         if self.ID in enemyfire_type_b:
-            self.hook_background_group.add(explode(self.screen,self.rect.center,self.explode_size))
+            self.hook_background_group.add(explode(self.screen,self.rect.center,self.sim_interval,self.explode_size))
             threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(self.explode_music),self.volume_multiply)).start()
         self.kill()
         
@@ -465,7 +475,8 @@ class enemy(pygame.sprite.Sprite):
         self.screen_rect = self.screen.get_rect()  # 活动矩形范围
         self.rect.center = pos
         self.shooting = False
-        self.time = pygame.time.get_ticks()
+        self.init_time = 0
+        self.time = self.init_time
         self.HP_max = float(enemy_dict['HP'][self.ID]) # 最大生命值
         self.HP = self.HP_max # 现有生命值
         self.collide_damage = self.HP_max # 撞击敌机会造成等同生命值的伤害
@@ -486,22 +497,22 @@ class enemy(pygame.sprite.Sprite):
         """默认射击-向目标点pos射击"""
         self.update_bullet_pos()
         bullet_dir = (target_pos[0]-self.rect.centerx,target_pos[1]-self.rect.centery)
-        blt = enemy_fire(self.screen,self.hook_background_group,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5,self.volume_multiply)
+        blt = enemy_fire(self.screen,self.hook_background_group,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,self.sim_interval,0.5,self.volume_multiply)
         self.hook_enemyfire_group.add(blt)
     def foward_shoot(self):
         self.update_bullet_pos()
         bullet_dir = (-sin(self.agl*pi/180.0),-cos(self.agl*pi/180.0))
-        blt = enemy_fire(self.screen,self.hook_background_group,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5,self.volume_multiply)
+        blt = enemy_fire(self.screen,self.hook_background_group,self.bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,self.sim_interval,0.5,self.volume_multiply)
         self.hook_enemyfire_group.add(blt)
     def default_shoot(self,bullet_offset=[0,0]):
         self.update_bullet_pos()
         bullet_dir = (0,1)
         bullet_pos = utils.tuple_add(self.bullet_pos,bullet_offset)
-        blt = enemy_fire(self.screen,self.hook_background_group,bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,0.5,self.volume_multiply)
+        blt = enemy_fire(self.screen,self.hook_background_group,bullet_pos,self.bullet_speed,self.bullet_ID,bullet_dir,self.sim_interval,0.5,self.volume_multiply)
         self.hook_enemyfire_group.add(blt)
     def shoot(self,bullet_pos,bullet_dir,bullet_speed):
         self.update_bullet_pos()
-        blt = enemy_fire(self.screen,self.hook_background_group,bullet_pos,bullet_speed,self.bullet_ID,bullet_dir,0.5,self.volume_multiply)
+        blt = enemy_fire(self.screen,self.hook_background_group,bullet_pos,bullet_speed,self.bullet_ID,bullet_dir,self.sim_interval,0.5,self.volume_multiply)
         self.hook_enemyfire_group.add(blt) # 将发射的子弹归为敌军活力群
     def update(self):
         self.speed = utils.speed_tran(self.speed_value,self.speed_dir) # 速度属性
@@ -519,7 +530,7 @@ class enemy(pygame.sprite.Sprite):
         self.rect.center = self.pos
         self.blitme()
     def update_time(self):# 更新敌机时间
-        self.time = pygame.time.get_ticks()
+        self.time += self.sim_interval
     def rotate(self,speed_dir,rotate_img=True):
         self.speed_dir = speed_dir
         self.agl = -180/pi*atan2(speed_dir[0],-speed_dir[1])
@@ -548,15 +559,16 @@ class enemy(pygame.sprite.Sprite):
             threading.Thread(target=utils.thread_play_music,args=(self.diamond_sound_file,1.0,0.8*self.volume_multiply)).start()
         self.hook_global_info.update(self.hook_global_info.gold + self.gold, self.hook_global_info.diamond+prob_level, self.hook_global_info.score + self.score)
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长
-        explode0 = explode(self.screen,self.rect.center,(explode_r,explode_r))
+        explode0 = explode(self.screen,self.rect.center,self.sim_interval,(explode_r,explode_r))
         self.hook_background_group.add(explode0) 
         threading.Thread(target=utils.play_music,args=(self.explode_sound,0.3*self.volume_multiply)).start()
         
 
 # 爆炸动画精灵
 class explode(pygame.sprite.Sprite):
-    def __init__(self,myscreen:pygame.Surface,pos,size=(120,120)):
+    def __init__(self,myscreen:pygame.Surface,pos,sim_interval:float,size=(120,120)):
         pygame.sprite.Sprite.__init__(self)
+        self.sim_interval = sim_interval
         self.screen = myscreen
         self.ID = 1
         self.image_ad = 'explode_png/ex{0}.png'.format(self.ID)
@@ -564,13 +576,17 @@ class explode(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load(self.image_ad),self.size)
         self.rect = self.image.get_rect()
         self.rect.center = pos # 爆炸中心坐标
-        self.time = pygame.time.get_ticks()
+        self.init_time = 0
+        self.time = self.init_time 
     def blitme(self):
         self.screen.blit(self.image,self.rect)
+    def update_time(self):
+        self.time += self.sim_interval
     def update(self):
+        self.update_time()
         if self.ID >= 10:
             self.kill()
-        elif pygame.time.get_ticks()-self.time > self.ID*20:
+        elif self.time-self.init_time > self.ID*20:
             self.image_ad = 'explode_png/ex{0}.png'.format(self.ID)
             self.image = pygame.transform.scale(pygame.image.load(self.image_ad),self.size)
             self.blitme()

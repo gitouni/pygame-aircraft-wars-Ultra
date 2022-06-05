@@ -21,8 +21,9 @@ sim_interval = CONIFG['setting']['sim_interval']
 
 # 警告标志
 class warn_mark(pygame.sprite.Sprite):
-    def __init__(self,myscreen,pos,type=0):
+    def __init__(self,myscreen,pos,sim_interval,type=0):
         pygame.sprite.Sprite.__init__(self)
+        self.sim_interval = sim_interval
         self.screen = myscreen
         self.size = (20,20)
         self.pos = pos
@@ -30,7 +31,8 @@ class warn_mark(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load(self.image_ad),self.size)
         self.rect = self.image.get_rect()
         self.rect.topleft = pos # 摆放位置
-        self.time = pygame.time.get_ticks()
+        self.init_time = 0
+        self.time = self.init_time
         self.i = 0
     def blitme(self):
         self.screen.blit(self.image,self.rect)
@@ -44,13 +46,14 @@ class warn_mark(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(pygame.image.load(self.image_ad),self.size)
             self.rect.topleft = self.pos
     def update_time(self):
-        self.time = pygame.time.get_ticks()
+        self.time += self.sim_interval
     def update(self):
         self.blitme()
-        if pygame.time.get_ticks()-self.time > 300:
+        self.update_time()
+        if self.time-self.init_time > 300:
             self.change_size()
             self.i += 1
-            self.update_time()
+            self.time = 0
         if self.i > 5:
             self.kill()
 
@@ -133,8 +136,7 @@ class scene1():
             self.enemy_group.add(enemy0) # 场景中加入该敌机
             self.hook_enemy_group.add(enemy0) # 总敌机群加入该敌机
             # 第一个点是敌机出现的初始位置
-    def update_time(self):
-        self.init_time = pygame.time.get_ticks()
+
     def update(self):
         # 第一次进入时更新该类时间
         if self.started == False:
@@ -142,9 +144,8 @@ class scene1():
             self.scene_init()
             rect0 = pygame.Rect(0,0,20,20)
             rect0.topleft = self.PointList[0]
-            warning0 = warn_mark(self.screen,transgress_xy(rect0),type=0)
+            warning0 = warn_mark(self.screen,transgress_xy(rect0),self.sim_interval,type=0)
             self.hook_background_group.add(warning0)
-            self.update_time()
         # 判断场景中的敌人是否该移动/删除
         for enemy0 in self.enemy_group.sprites():
             assert isinstance(enemy0,enemy), "Class must be enemy!"
@@ -191,8 +192,9 @@ class scene1():
                hook_player:fighter,hook_global_info:utils.Info,
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
-               hook_background_group:pygame.sprite.Group,sim_interval:float,
-               init_time=pygame.time.get_ticks(),volume_multiply:float=1.0):
+               hook_background_group:pygame.sprite.Group,
+               sim_interval:float,init_time=0,
+               volume_multiply:float=1.0):
         assert cls_info['type'] == 'scene1', "types of scene_info and scene dont't fit"
         cnt = dict(type='scene1',
                     point_list=[[0.5, -0.2],[0.5,1.2]],
@@ -277,7 +279,9 @@ class scene2():
         self.init_speed = init_speed
         self.need_to_end = False
         self.started = False
-        self.init_time = init_time   
+        self.shoot_started = False
+        self.init_time = init_time 
+        self.time = self.init_time  
         self.wait_time = wait_time
         self.bullet_speed = bullet_speed
         self.bullet_ID = bullet_ID
@@ -286,10 +290,11 @@ class scene2():
         self.bullet_break_cnt = bullet_break_cnt
         self.bullet_break = bullet_break
         self.bullet_cnt = 0
-        
+    
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
         self.enemy = enemy(self.screen,self.enemy_ID,self.path[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
-                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,self.sim_interval,self.volume_multiply)
+                        self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,
+                        self.sim_interval,self.volume_multiply)
         self.enemy.data = [0,0,len(self.path),0] 
         '''
         data[0]:敌机目前处在的最小（直线）分段点
@@ -301,8 +306,7 @@ class scene2():
         self.enemy.speed_value = 0
         self.hook_enemy_group.add(self.enemy) # 总敌机群加入该敌机
         # 第一个点是敌机出现的初始位置
-    def update_time(self):
-        self.init_time = pygame.time.get_ticks()
+
     def update(self):
         # 第一次进入时更新该类时间
         if self.started == False:
@@ -310,8 +314,7 @@ class scene2():
             self.scene_init()
             rect0 = pygame.Rect(0,0,20,20)
             rect0.topleft = (self.path[0][0],-0.2)
-            self.hook_background_group.add(warn_mark(self.screen,transgress_xy(rect0),type=1))
-            self.update_time()
+            self.hook_background_group.add(warn_mark(self.screen,transgress_xy(rect0),self.sim_interval,type=1))
         self.enemy.update_time()
         self.need_to_end = self.enemy.need_to_remove or (not self.enemy.alive())
         # 判断场景中的敌人是否该移动/删除
@@ -329,9 +332,12 @@ class scene2():
                 self.enemy.rotate(self.speed_dir[self.enemy.data[1]],rotate_img=False)
             self.enemy.move_to(self.path[self.enemy.data[0]])
             if self.shoot_start_index <= self.enemy.data[0] < self.shoot_end_index: # 位于循环轨迹才发射子弹
+                if not self.shoot_started:
+                    self.time = self.enemy.time
+                    self.shoot_started = True
                 self.enemy.speed_value = self.speed
                 if self.bullet_cnt < self.bullet_break_cnt:
-                    if self.enemy.time-self.init_time > self.bullet_cd*1000:
+                    if self.enemy.time-self.time >= self.bullet_cd*1000:
                         if self.bullet_target == [1,1]:  # shoot at player
                             self.enemy.orientated_shoot((self.hook_player.rect.centerx,self.hook_player.rect.centery))
                         elif self.bullet_target == [0,0]:  # shoot at speed direction
@@ -342,12 +348,12 @@ class scene2():
                             target_position = (GAME_SCREEN[0]*self.bullet_target[0],GAME_SCREEN[1]*self.bullet_target[1])
                             self.enemy.orientated_shoot(target_position)
                         self.enemy.shooted = True
-                        self.update_time()
                         self.bullet_cnt += 1
+                        self.time += self.bullet_cd*1000
                 else:
-                    if self.enemy.time-self.init_time > self.bullet_break*1000:
+                    if self.enemy.time-self.time >= self.bullet_break*1000:
                         self.bullet_cnt = 0
-                        self.update_time()
+                        self.time += (self.bullet_break-self.bullet_cd)*1000
             else:
                 self.enemy.speed_value = self.init_speed
         # 所有敌人都需删除，场景删除所有敌人并不再更新
@@ -360,8 +366,9 @@ class scene2():
                hook_player:fighter,hook_global_info:utils.Info,
                hook_enemy_group:pygame.sprite.Group,
                hook_enemyfire_group:pygame.sprite.Group,
-               hook_background_group:pygame.sprite.Group,sim_interval:float,
-               init_time=pygame.time.get_ticks(),volume_multiply:float=1.0):
+               hook_background_group:pygame.sprite.Group,
+               sim_interval:float,init_time=0,
+               volume_multiply:float=1.0):
         assert cls_info['type'] == 'scene2', "types of scene_info and scene dont't fit"
         cnt =  dict(type='scene2',
                     point_list=[[0.5, 0.1], [0.45, 0.11], [0.41, 0.12], [0.38, 0.13], [0.35, 0.15], [0.34, 0.17], [0.36, 0.2], [0.39, 0.21], [0.43, 0.22], [0.48, 0.22], [0.52, 0.21], [0.56, 0.19], [0.6, 0.17], [0.6, 0.15], [0.56, 0.14], [0.52, 0.13], [0.48, 0.13], [0.43, 0.13], [0.39, 0.13], [0.36, 0.15], [0.35, 0.17], [0.37, 0.19], [0.42, 0.19], [0.47, 0.19], [0.5, 0.17], [0.52, 0.15], [0.5, 0.13], [0.45, 0.13], [0.42, 0.14], [0.4, 0.16], [0.41, 0.18], [0.44, 0.18], [0.48, 0.19], [0.53, 0.18], [0.56, 0.17], [0.58, 0.15], [0.59, 0.12], [0.56, 0.11], [0.51, 0.11]],

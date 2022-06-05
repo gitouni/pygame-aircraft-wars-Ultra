@@ -1,6 +1,6 @@
 import os
 import time
-from tkinter import messagebox, simpledialog
+from tkinter import simpledialog
 import pygame
 # extend import
 import pygame.event
@@ -61,7 +61,9 @@ class AutoGameRun:
         self.display_font = pygame.font.SysFont('arial', 40, bold=True)
         self.screen = pygame.display.set_mode(self.screen_size)
         self.background = pygame.Surface((self.gamescreen_size[0]+100,self.gamescreen_size[1]+100))  # blit can receive negative coordinates rather than larger than window size
-    
+        self.pause_log = pygame.image.load(os.path.join(self.CONFIG['icon']['path'],self.CONFIG['icon']['pause']))
+        self.pause_log = pygame.transform.scale(self.pause_log,[40,40])
+        self.pause_pos = (self.screen_size[0]//2 - 20, self.screen_size[1]//2 - 20)
     @staticmethod
     def init_pygame():
         if not pygame.get_init():
@@ -171,13 +173,21 @@ class AutoGameRun:
         self.system_reset_time()
         now = self.init_time
         running = True
+        pause = False
         blit_ad = 0
         now = self.init_time
         self.globalset.fighter_state.clear()
+        clock = pygame.time.Clock()
         while running:
             # 监视屏幕
-            last_time = pygame.time.get_ticks()
-            running = self.event_check(player)
+            running, pause = self.event_check(player,pause)
+            while pause and running:
+                running, pause = self.event_check(player,pause)
+                self.screen.blit(self.pause_log,self.pause_pos)
+                pygame.display.flip()
+            if not running:
+                break
+            
             # 让最近绘制的屏幕可见
             now += self.sim_interval
             if self.is_log:
@@ -213,9 +223,7 @@ class AutoGameRun:
                     success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
                     self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
             pygame.display.flip()  # 更新画面
-            delta = pygame.time.get_ticks() - last_time
-            if delta < self.sim_interval:
-                time.sleep((self.sim_interval-delta)/1000)
+            clock.tick(1000.0/self.sim_interval)
         self.gameset.gold = int(player_info.gold)
         self.gameset.diamond = int(player_info.diamond)
         self.gameset.high_score = max(self.gameset.high_score,player_info.score)
@@ -278,12 +286,12 @@ class AutoGameRun:
     
     
     @staticmethod
-    def event_check(player:fighter) -> bool:
+    def event_check(player:fighter,pause:bool) -> tuple:
         running = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:  # 检测到按退出键，实施软退出
                 running = False
-                return False
+                return False, pause
             if player.alive_: # 玩家阵亡时不再响应控制按键
                 if event.type == pygame.KEYDOWN:  # 检测到有键按下时动作，相反的两个动作不能冲突抵消
                     if event.key == pygame.K_RIGHT:
@@ -308,6 +316,8 @@ class AutoGameRun:
                         player.shoot1, player.shoot2, player.shoot3 = True,True,True
                     if event.key == pygame.K_SPACE:
                         player.launching = True
+                    if event.key == pygame.K_p:
+                        pause = not pause
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_RIGHT:
                         player.moving_right = False
@@ -317,7 +327,7 @@ class AutoGameRun:
                         player.moving_up = False
                     elif event.key == pygame.K_DOWN:
                         player.moving_down = False
-        return running
+        return running, pause
     
     def quit_game(self):
         if self.gameset.path:
@@ -362,12 +372,15 @@ class LogGameRun(AutoGameRun):
         self.index = 0
     
     @staticmethod  
-    def event_check(player:fighter,state:dict) -> bool:
+    def event_check(player:fighter,state:dict,pause:bool) -> tuple:
         running = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:  # 检测到按退出键，实施软退出
                 running = False
-                return False
+                return False, pause
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    pause = not pause
         if player.alive_: # 玩家阵亡时不再响应控制按键
             player.moving_down = state['moving']['down']
             player.moving_up = state['moving']['up']
@@ -378,7 +391,7 @@ class LogGameRun(AutoGameRun):
             player.shoot3 = state['shoot_mode'][2]
             player.shooting = state['shoot']
             player.launching = state['launch']
-        return running
+        return running, pause
     
     def quit_game(self):
         pygame.mixer.quit()
@@ -415,13 +428,14 @@ class LogGameRun(AutoGameRun):
         pygame.display.flip()
         max_scene_time = self.create_scene(player,player_info)
         running = True
+        pause = False
         size_state = len(self.log_dict['state'])
         blit_ad = 0
         self.system_reset_time()
         now = self.init_time
+        clock = pygame.time.Clock()
         while running:
             # 监视屏幕
-            last_time = pygame.time.get_ticks()
             now += self.sim_interval
             if self.index < size_state:
                 state = self.log_dict['state'][self.index]
@@ -430,7 +444,16 @@ class LogGameRun(AutoGameRun):
                 state = self.log_dict['state'][-1]
                 state['shoot'] = False
                 state['launch'] = False
-            running = self.event_check(player,state)
+                if not player_info.has_success:
+                    player.alive_ = False  # 终止飞机互动
+            
+            running, pause = self.event_check(player,state,pause)
+            while pause and running:
+                running, pause = self.event_check(player,state,pause)
+                self.screen.blit(self.pause_log,self.pause_pos)
+                pygame.display.flip()
+            if not running:
+                break
             # 让最近绘制的屏幕可见
             blit_ad += self.sim_interval/1000*self.bg_rollv % self.bg_resize[1]
             blit_ad %= self.bg_resize[1]
@@ -449,8 +472,8 @@ class LogGameRun(AutoGameRun):
                 if not player_info.has_fail:
                     failed()
                     player_info.has_fail = True
-                elif (now - self.init_time) % 1000 > 500:
-                    display_font_surface = self.display_font.render('Mission Failed',True,[255,0,0])
+                elif (now - self.init_time) % 1000 > 500 and (not player_info.has_success):
+                    display_font_surface = self.display_font.render('Log Finished',True,[255,0,0])
                     self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
             if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
                 if not player_info.has_success:
@@ -460,9 +483,7 @@ class LogGameRun(AutoGameRun):
                     success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
                     self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
             pygame.display.flip()  # 更新画面
-            delta = pygame.time.get_ticks() - last_time
-            if delta < self.sim_interval:
-                time.sleep((self.sim_interval-delta)/1000)
+            clock.tick(1000.0/self.sim_interval)
         self.gameset.gold = int(player_info.gold)
         self.gameset.diamond = int(player_info.diamond)
         self.gameset.high_score = max(self.gameset.high_score,player_info.score)

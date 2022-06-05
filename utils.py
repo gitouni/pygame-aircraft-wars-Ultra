@@ -34,16 +34,16 @@ class Setting:
         self.has_saved = True
         self.background_jpg = 'background_jpg/img_bg_3.jpg'
         self.player_index = 0
-        self.win_open = dict(skin=False,setting=False,help=False,account=False,scene=False,game=False,lab=False,net=False)
+        self.win_open = dict(skin=False,setting=False,help=False,
+                             account=False,scene=False,game=False,
+                             lab=False,net=False,log=False)
         self.scenes = []
         # log parameters
         self.scene_path = ""
         self.fighter_state = []
-        self.timestamps = []
         
-    def log_fighter(self,time:float,x:int,y:int,angle:int,shoot_flag:list,launch_flag:bool):
-        self.timestamps.append(time)
-        self.fighter_state.append(dict(x=x,y=y,angle=angle,shoot1=shoot_flag[0],shoot2=shoot_flag[1],shoot3=shoot_flag[2],launch_flag=launch_flag))
+    def log_fighter(self,moving_flag:dict,shoot_flag:bool,shoot_mode:list,launch_flag:bool):
+        self.fighter_state.append(dict(moving=moving_flag,shoot=shoot_flag,shoot_mode=shoot_mode,launch=launch_flag))
         
 def msg_with_time(msg:str)->tuple:
     return (pretty_time(time.time()),msg)
@@ -209,12 +209,12 @@ def thread_play_music(filename,volume=None,duration=None):
 def extract_type(filename_list:list,type='a',pattern:str='[_]\w*[.]'):
     return [index for index in range(len(filename_list)) if re.search(pattern,filename_list[index]) and type in re.search(pattern,filename_list[index]).group()]
 
-def account_sort(account_path:str)->list:
-    account_file = os.listdir(account_path)
+def recent_sort(path:str)->list:
+    account_file = os.listdir(path)
     if len(account_file)>0:
         account_time = []
         for file in account_file:
-            fullpath = os.path.join(account_path,file)
+            fullpath = os.path.join(path,file)
             filetime = os.path.getmtime(fullpath)
             account_time.append(filetime)
         account_tuple = list(zip(account_file,account_time))

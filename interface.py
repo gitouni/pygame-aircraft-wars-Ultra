@@ -167,7 +167,22 @@ def run_log_video(globalset:utils.Setting,sim_interval:float,volume:float):
         os.remove(os.path.join('video',video_path))
         listbox.delete(index)
         log_list.pop(index)
-        
+    
+    def rename():
+        index = listbox.curselection()
+        if len(index) == 0:
+            messagebox.showwarning('警告','未选择任何录像。')
+            return
+        index = index[0]
+        res = simpledialog.askstring('提示','请输入新名称\n空值或Cancel即可撤销此操作。')
+        if not res:
+            return
+        video_path = log_list[index]
+        os.rename(os.path.join('video',video_path),os.path.join('video',res+'.p'))
+        listbox.delete(index)
+        listbox.insert(index,res)
+        log_list[index] = res+'.p'
+    
     def on_closing():
         globalset.win_open['log'] = False
         root.destroy()
@@ -191,11 +206,13 @@ def run_log_video(globalset:utils.Setting,sim_interval:float,volume:float):
     F12 = tk.Frame(F1)
     F12.pack(side=tk.BOTTOM)
     button1 = tk.Button(F11,text='播放',bg='white',font=('songti',12),command=load)
-    button1.pack(side=tk.LEFT,padx=10)
+    button1.pack(side=tk.LEFT,padx=5)
     button2 = tk.Button(F11,text='删除',bg='white',font=('songti',12),command=delete)
-    button2.pack(side=tk.LEFT,padx=10)
-    button3 = tk.Button(F11,text='返回',bg='white',font=('songti',12),command=on_closing)
-    button3.pack(side=tk.RIGHT,padx=10)
+    button2.pack(side=tk.LEFT,padx=5)
+    button3 = tk.Button(F11,text='重命名',bg='white',font=('songti',12),command=rename)
+    button3.pack(side=tk.LEFT,padx=5)
+    button4 = tk.Button(F11,text='返回',bg='white',font=('songti',12),command=on_closing)
+    button4.pack(side=tk.LEFT,padx=5)
     scbar = tk.Scrollbar(F12, orient=tk.VERTICAL)
     listbox = tk.Listbox(F12,yscrollcommand=scbar.set,
                                  selectmode=tk.SINGLE,width=23,height=15,

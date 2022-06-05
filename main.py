@@ -82,20 +82,26 @@ def run_setting(globalset:utils.Setting,info:tk.StringVar)->None:
 def _run_game(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET,gameset
     root.update()  # 按钮弹起，显示状态栏
-    # root.withdraw()
-    # try:
-    run_game(gameset,GLOBAL_SET,SIM_INTERVAL,VOLUME,LOGGING)
-    # root.deiconify()
-    statustext.set('游戏正常退出')
-    # except:
-    #     root.deiconify()
-    #     statustext.set('游戏异常退出')
+    root.withdraw()
+    try:
+        run_game(gameset,GLOBAL_SET,SIM_INTERVAL,VOLUME,LOGGING)
+        root.deiconify()
+        statustext.set('游戏正常退出')
+    except:
+        root.deiconify()
+        statustext.set('游戏异常退出')
 
 def _run_video(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET
     root.update()
-    run_log_video(GLOBAL_SET,SIM_INTERVAL,VOLUME)
-    statustext.set('录像正常退出')
+    root.withdraw()
+    try:
+        run_log_video(GLOBAL_SET,SIM_INTERVAL,VOLUME)
+        root.deiconify()
+        statustext.set('录像正常退出')
+    except:
+        root.deiconify()
+        statustext.set('录像异常退出')
     
 
 def _run_setting(info:utils.Info):
