@@ -213,13 +213,14 @@ class AutoGameRun:
                 elif (now - self.init_time) % 1000 > 500:
                     display_font_surface = self.display_font.render('Mission Failed',True,[255,0,0])
                     self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
-            if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
-                if not player_info.has_success:
-                    succeeded()
-                    player_info.has_success = True
-                elif (now - self.init_time) % 1000 > 500:
-                    success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
-                    self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
+            else:
+                if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
+                    if not player_info.has_success:
+                        succeeded()
+                        player_info.has_success = True
+                    elif (now - self.init_time) % 1000 > 500:
+                        success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
+                        self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
             pygame.display.flip()  # 更新画面
             clock.tick(1000.0/self.sim_interval)
         self.gameset.gold = int(player_info.gold)
