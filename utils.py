@@ -44,7 +44,57 @@ class Setting:
         
     def log_fighter(self,moving_flag:dict,shoot_flag:bool,shoot_mode:list,launch_flag:bool):
         self.fighter_state.append(dict(moving=moving_flag,shoot=shoot_flag,shoot_mode=shoot_mode,launch=launch_flag))
+
+class PlayerState:
+    def __init__(self,state:dict=dict()):
+        if state:
+            self.moving_down = state['moving']['down']
+            self.moving_up = state['moving']['up']
+            self.moving_left = state['moving']['left']
+            self.moving_right = state['moving']['right']
+            self.shoot1 = state['shoot_mode'][0]
+            self.shoot2 = state['shoot_mode'][1]
+            self.shoot3 = state['shoot_mode'][2]
+            self.shooting = state['shoot']
+            self.launching = state['launch']
+        else:
+            self.moving_down = False
+            self.moving_up = False
+            self.moving_left = False
+            self.moving_right = False
+            self.shoot1 = True
+            self.shoot2 = False
+            self.shoot3 = False
+            self.shooting = False
+            self.launching = False
+        self.lock = threading.Lock()
         
+    def update(self,state:dict):
+        with self.lock:
+            self.moving_down = state['moving']['down']
+            self.moving_up = state['moving']['up']
+            self.moving_left = state['moving']['left']
+            self.moving_right = state['moving']['right']
+            self.shoot1 = state['shoot_mode'][0]
+            self.shoot2 = state['shoot_mode'][1]
+            self.shoot3 = state['shoot_mode'][2]
+            self.shooting = state['shoot']
+            self.launching = state['launch']
+            
+    def get(self)->dict:
+        state = dict(moving=[],shoot_mode=[True,False,False])
+        with self.lock:
+            state['moving']['down'] = self.moving_down
+            state['moving']['up'] = self.moving_up
+            state['moving']['left'] = self.moving_left
+            state['moving']['right'] = self.moving_right
+            state['shoot_mode'][0] = self.shoot1
+            state['shoot_mode'][1] = self.shoot2
+            state['shoot_mode'][2] = self.shoot3
+            state['shoot'] = self.shooting
+            state['launch'] = self.launching
+        return state
+
 def msg_with_time(msg:str)->tuple:
     return (pretty_time(time.time()),msg)
 

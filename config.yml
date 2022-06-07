@@ -27,8 +27,8 @@ account:
   save_sound_file: Sound_effect/ensure.wav
   error_sound_file: Sound_effect/error.wav
   exit_sound_file: Sound_effect/tip.wav
-  initial_gold: 20000
-  initial_diamond: 200
+  initial_gold: 2000000
+  initial_diamond: 200000
 
 map:
   path: scenes/
@@ -95,7 +95,7 @@ help:
   help_note_txt: text/help_note.txt
 
 set:
-  sim_interval_list: [10,15,30] 
+  sim_interval_list: [6,10,15,30] 
   screen_size: [200,150]
   steps: 20
   min_volume: 0

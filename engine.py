@@ -1,3 +1,4 @@
+from typing import List
 import os
 import time
 from tkinter import simpledialog
@@ -41,9 +42,6 @@ class AutoGameRun:
         self.init_time = 0
         # setting
         self.gameset = gameset
-        self.gameset.setting['sim_interval'] = sim_interval
-        self.gameset.setting['volume'] = volume
-        self.gameset.setting['log'] = log
         self.globalset = globalset
         self.sim_interval = sim_interval
         self.volume = volume
@@ -475,13 +473,14 @@ class LogGameRun(AutoGameRun):
                 elif (now - self.init_time) % 1000 > 500 and (not player_info.has_success):
                     display_font_surface = self.display_font.render('Log Finished',True,[255,0,0])
                     self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
-            if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
-                if not player_info.has_success:
-                    succeeded()
-                    player_info.has_success = True
-                elif (now - self.init_time) % 1000 > 500:
-                    success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
-                    self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
+            else:
+                if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:
+                    if not player_info.has_success:
+                        succeeded()
+                        player_info.has_success = True
+                    elif (now - self.init_time) % 1000 > 500:
+                        success_font_surface = self.display_font.render('Mission Accomplished',True,[255,255,255])
+                        self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
             pygame.display.flip()  # 更新画面
             clock.tick(1000.0/self.sim_interval)
         self.gameset.gold = int(player_info.gold)
@@ -489,5 +488,34 @@ class LogGameRun(AutoGameRun):
         self.gameset.high_score = max(self.gameset.high_score,player_info.score)
         self.quit_game()
         
+class TwoPlayerRun(AutoGameRun):
+    def __init__(self,gameset1:game_set,gameset2:game_set,globalset:utils.Setting,
+                 sim_interval:float,volume:float,config_path='config.yml'):
+        self.init_pygame()
+        # CONFIG
+        with open(config_path,'r')as f:
+            self.CONFIG = yaml.load(f,yaml.SafeLoader)
+        # group
+        self.enemyfire_Group = pygame.sprite.Group()
+        self.enemy_Group = pygame.sprite.Group()
+        self.bullet_Group = pygame.sprite.Group()
+        self.background_Group = pygame.sprite.Group()
+        self.scene_time = []
+        self.scene_list = []
+        self.scene_class = dict(scene1=scene1,scene2=scene2)
+        self.init_time = 0
+        # setting
+        self.gameset1 = gameset1
+        self.gameset2 = gameset2
+        self.globalset = globalset
+        self.sim_interval = sim_interval
+        self.volume = volume
+        self.bg_rollv = self.CONFIG['setting']['bg_rollv']  # rolling speed
+        self.screen_size = self.CONFIG['setting']['screen_size'] # 完整屏幕的分辨率
+        self.statebar_size = self.CONFIG['setting']['status_bar_size'] # 状态栏分辨率
+        self.gamescreen_size = self.CONFIG['setting']['gamescreen_size']
+        self.screen_bg_color = self.CONFIG['setting']['background_color']
+        
+    
         
             
