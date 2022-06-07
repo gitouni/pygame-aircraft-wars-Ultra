@@ -1,4 +1,3 @@
-from typing import List
 import os
 import time
 from tkinter import simpledialog
