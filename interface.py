@@ -475,6 +475,8 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         gameset_copy.__dict__ = deepcopy(gameset.__dict__)
         threading.Thread(target=utils.thread_play_music,args=(config['refresh_sound_file'],1,1.0)).start()
         flash()
+        statustext.set('重置成功！')
+        statusbar.config(foreground='blue')
     def flash():
         gold_label.config(text=utils.pretty_number(gameset_copy.gold))
         diamond_label.config(text=utils.pretty_number(gameset_copy.diamond))
@@ -506,8 +508,16 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
                 gameset_copy.__dict__[level_keys[index]] += 1
                 threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(config['upgrade_sound_file']),1)).start()
                 flash()
+                statustext.set('升级成功！')
+                statusbar.config(foreground='blue')
             else:
                 upgrade_error()
+                if gameset_copy.gold < consume_gold:
+                    statustext.set('没有足够的金币')
+                    statusbar.config(foreground='red')
+                elif gameset_copy.diamond < consume_diamond:
+                    statustext.set('没有足够的钻石')
+                    statusbar.config(foreground='red')
         else:
             upgrade_error()
     def upgrade_error():
@@ -517,7 +527,8 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
         gameset.__dict__ = deepcopy(gameset_copy.__dict__)
         globalset.has_saved = False
         threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1,1.0)).start()
-    
+        statustext.set('保存成功！')
+        statusbar.config(foreground='blue')
     # for debugging
     # def print_coord(event:tk.Event):
     #     print(f"({event.x},{event.y})")
@@ -563,8 +574,12 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     root.title('实验室')
     # root.bind("<Button-1>",print_coord) # for debug
     win_width, win_height = config['lab_screen_size']
-    root.geometry('{:d}x{:d}'.format(win_width,win_height))
+    # root.geometry('{:d}x{:d}'.format(win_width,win_height+10))
     root.iconphoto(True,tk.PhotoImage(file=CONFIG['setting']['lab_ico']))
+    statustext = tk.StringVar()
+    statustext.set('请选择项目进行升级')
+    statusbar = tk.Label(root, textvariable=statustext,relief=tk.SUNKEN, anchor= 'w',foreground='blue')
+    statusbar.pack(side=tk.BOTTOM,fill=tk.X)
     img = Image.open(config['lab_img'])
     img = img.resize((win_width, win_height),Image.BICUBIC)
     photo = ImageTk.PhotoImage(img)
@@ -729,6 +744,7 @@ def run_net(globalset:utils.Setting):
             connect_button.config(text='断开')
         else:
             statustext.set('请等待客户端连接结果...')
+            root.update()
             ROLE = network.Client(ip,port)
             res = ROLE.init_connect()
             if not res:

@@ -22,13 +22,14 @@ interface:
     upgrade_grid: [[224,78],[224,125],[224,173],[224,219],[224,264],[224,311],[529,78],[529,125],[529,173],[529,219],[529,264],[529,311]]
 
 account:
+  basic_setting: data/basic_setting.json
   refresh_sound_file: Sound_effect/refresh.wav
   upgrade_sound_file: Sound_effect/pay.wav
   save_sound_file: Sound_effect/ensure.wav
   error_sound_file: Sound_effect/error.wav
   exit_sound_file: Sound_effect/tip.wav
-  initial_gold: 2000000
-  initial_diamond: 200000
+  initial_gold: 20000
+  initial_diamond: 200
 
 map:
   path: scenes/
