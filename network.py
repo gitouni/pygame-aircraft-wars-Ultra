@@ -1,9 +1,8 @@
 import json
 import socket
-from enum import Enum
+from enum import Enum, auto
 import threading
 import time
-from math import isnan
 import utils
 
 class NetType(Enum):
@@ -11,11 +10,14 @@ class NetType(Enum):
     Server = 1
 
 class Protocol(Enum):
-    SEND_NET_STATE = 0
-    SEND_MESSAGE = 1
-    SEND_GAME_STATE = 2
-    RECEIVE_MESSAGE = 3
-    CLOSE_CONNECTION = 4
+    SEND_NET_STATE = auto()
+    REV_NET_STATE = auto()
+    SEND_MESSAGE = auto()
+    SEND_MEASURE_DELAY = auto()
+    RECEIVE_MEASURE_DELAY = auto()
+    SEND_GAME_STATE = auto()
+    RECEIVE_MESSAGE = auto()
+    CLOSE_CONNECTION = auto()
 
 
 class Client:
@@ -28,6 +30,9 @@ class Client:
         self.open_lock = threading.Lock()
         self.content_lock = threading.Lock()
         self.log_lock = threading.Lock()
+        self.rev_lock = threading.Lock()
+        self.info = dict(delay=-1,rev=0)
+        
     def init_connect(self)->bool:
         if self.is_open:
             return True
@@ -65,7 +70,7 @@ class Client:
         data = dict(type=Protocol.SEND_NET_STATE.value,content='')
         data_str = json.dumps(data)
         self.client.send(data_str.encode('utf-8'))
-        
+         
     def send_disconnection(self):
         if not self.is_open:
             with self.log_lock:
@@ -89,52 +94,50 @@ class Client:
         with self.log_lock:
             self.log_buff.append(utils.msg_with_time('Message has been sent to server {}.'.format(self.meta['host'])))
         
-    def mesaure_msg(self,cnt=10):
-        data = dict(type=Protocol.SEND_MESSAGE.value,content='request for delay')
-        data_str = json.dumps(data)
-        for _ in range(cnt):
-            start_time = time.time()
-            self.client.sendall(data_str.encode('utf-8'))
-            try:
-                rev_data_str = self.client.recv(1024).decode('utf-8')
-                while rev_data_str == '':
+        # 平均延迟，丢包率
+    def measure_delay(self,cnt=3):
+        with self.rev_lock:
+            data = dict(type=Protocol.SEND_MEASURE_DELAY.value,content='request for delay')
+            data_str = json.dumps(data)
+            total_time = 0.0
+            total_rev_packs = 0
+            for _ in range(cnt):
+                flag = True
+                start_time = time.time()
+                self.client.send(data_str.encode('utf-8'))
+                try:
                     rev_data_str = self.client.recv(1024).decode('utf-8')
+                except socket.timeout:
+                    self.info['delay'] = -1
+                    self.info['rev'] = 0
+                    return -1
+                except ConnectionError:
+                    self.info['delay'] = -1
+                    self.info['rev'] = 0
+                    return -1
+                while rev_data_str == '':
                     if time.time() - start_time > self.meta['max_wait_time']:
-                        print('excceed maximum waiting time, close connection')
+                        flag = False
                         break
-                print(rev_data_str)
-            except socket.timeout:
-                print('connection timeout')
-                return
-            
-
-        # 平均延迟，丢包率
-    def measure_delay(self,cnt=10):
-        data = dict(type=Protocol.SEND_NET_STATE.value,content='request for delay')
-        data_str = json.dumps(data)
-        total_time = 0.0
-        total_rev_packs = 0
-        for _ in range(cnt):
-            flag = True
-            start_time = time.time()
-            self.client.sendall(data_str.encode('utf-8'))
-            try:
-                rev_data_str = self.client.recv(1024).decode('utf-8')
-            except socket.timeout:
-                return float('nan'), 0
-            while rev_data_str == '':
-                rev_data_str = self.client.recv(1024).decode('utf-8')
-                if time.time() - start_time > self.meta['max_wait_time']:
-                    flag = False
-                    break
-            if flag:
-                total_time += time.time() - start_time
-                total_rev_packs += 1
-        # 平均延迟，丢包率
-        if total_rev_packs == 0:
-            return float('nan'), 0
-        else:
-            return total_time/total_rev_packs, total_rev_packs/cnt
+                    rev_data_str = self.client.recv(1024).decode('utf-8')
+                    rev_data = json.dumps(rev_data_str)
+                    if isinstance(rev_data,dict) and rev_data['type'] == Protocol.RECEIVE_MEASURE_DELAY.value:
+                        flag = True
+                        break
+                    else:
+                        rev_data_str = ''
+                        continue
+                if flag:
+                    total_time += time.time() - start_time
+                    total_rev_packs += 1
+            # 平均延迟，丢包率
+            if total_rev_packs == 0:
+                self.info['delay'] = -1
+                self.info['rev'] = 0
+            else:
+                self.info['delay'] = total_time/total_rev_packs
+                self.info['rev'] = total_rev_packs/cnt
+            return 0
         
     def msg_rev_thread(self):
         while True:
@@ -147,13 +150,14 @@ class Client:
                         if not self.is_open:
                             break
                     try:
-                        buff_str = self.client.recv(1024).decode('utf-8')
+                        with self.rev_lock:
+                            buff_str = self.client.recv(1024).decode('utf-8')
                         if buff_str == "":  # 为空说明未收到任何数据，重新接收
                             continue
                         ## 以下为客户端的响应程序
                         buff = json.loads(buff_str)  # dict
                         if buff['type'] == Protocol.SEND_NET_STATE.value:  # 网络延迟测试    
-                            data = dict(type=Protocol.SEND_NET_STATE.value,content='from {}'.format(self.meta['host']))
+                            data = dict(type=Protocol.REV_NET_STATE.value,content='from {}'.format(self.meta['host']))
                             data_str = json.dumps(data)
                             self.client.send(data_str.encode('utf-8'))
                         elif buff['type'] == Protocol.SEND_MESSAGE.value:
@@ -166,10 +170,21 @@ class Client:
                             with self.log_lock:
                                 self.log_buff.append(utils.msg_with_time('Message Received'))
                         elif buff['type'] == Protocol.CLOSE_CONNECTION.value:
+                            data = dict(type=Protocol.RECEIVE_MESSAGE.value,content='Message Recieved!')
+                            data_str = json.dumps(data)
+                            self.client.send(data_str.encode('utf-8'))
                             with self.log_lock:
                                 self.log_buff.append(utils.msg_with_time('Server broken down, try to connect again.'))
                             with self.open_lock:
                                 self.is_open = False
+                        elif buff['type'] == Protocol.SEND_MEASURE_DELAY.value:
+                            data = dict(type=Protocol.RECEIVE_MEASURE_DELAY.value,content='Measure received')
+                            data_str = json.dumps(data)
+                            self.client.send(data_str.encode('utf-8'))
+                        elif buff['type'] == Protocol.RECEIVE_MEASURE_DELAY.value:
+                            break
+                        elif buff['type'] == Protocol.REV_NET_STATE.value:
+                            break
                         else:
                             data = dict(type=Protocol.SEND_NET_STATE.value,content='Unknown message received!')
                             data_str = json.dumps(data)
@@ -178,8 +193,7 @@ class Client:
                                 self.log_buff.append(utils.msg_with_time('Unknown message recevied from {}'.format(self.meta['host'])))
                     except socket.timeout:
                         buff_str = ""
-                        with self.log_lock:
-                            self.log_buff.append(utils.msg_with_time('No reply from Server, try to reconnect.'))
+                        self.send_netstate()
                     except json.decoder.JSONDecodeError:
                         buff_str = ""
                     except OSError:
@@ -201,8 +215,11 @@ class Server:
         self.open_lock = threading.Lock()
         self.content_lock = threading.Lock()
         self.log_lock = threading.Lock()
+        self.rev_lock = threading.Lock()
         self.ss = None
         self.ss_ip = None
+        self.info = dict(delay=-1,rev=0)
+        
     def init_bind(self):
         self.server.bind((self.meta['host'],self.meta['port']))
         self.server.settimeout(self.meta['timeout'])
@@ -228,7 +245,55 @@ class Server:
             data = dict(type=Protocol.CLOSE_CONNECTION.value,content='')
             data_str = json.dumps(data)
             self.ss.send(data_str.encode('utf-8'))
-     
+    
+    def measure_delay(self,cnt=3):
+        if self.ss is None:
+            with self.log_lock:
+                self.log_buff.append(utils.msg_with_time('Reject to send message, none of connected client!'))
+            return -1
+        with self.rev_lock:
+            data = dict(type=Protocol.SEND_MEASURE_DELAY.value,content='request for delay')
+            data_str = json.dumps(data)
+            total_time = 0.0
+            total_rev_packs = 0
+            for _ in range(cnt):
+                flag = True
+                start_time = time.time()
+                self.ss.send(data_str.encode('utf-8'))
+                try:
+                    rev_data_str = self.ss.recv(1024).decode('utf-8')
+                except socket.timeout:
+                    self.info['delay'] = -1
+                    self.info['rev'] = 0
+                    return -1
+                except ConnectionError:
+                    self.info['delay'] = -1
+                    self.info['rev'] = 0
+                    return -1
+                while rev_data_str == '':
+                    if time.time() - start_time > self.meta['max_wait_time']:
+                        flag = False
+                        break
+                    rev_data_str = self.ss.recv(1024).decode('utf-8')
+                    rev_data = json.dumps(rev_data_str)
+                    if isinstance(rev_data,dict) and rev_data['type'] == Protocol.RECEIVE_MEASURE_DELAY.value:
+                        flag = True
+                        break
+                    else:
+                        rev_data_str = ''
+                        continue
+                if flag:
+                    total_time += time.time() - start_time
+                    total_rev_packs += 1
+            # 平均延迟，丢包率
+            if total_rev_packs == 0:
+                self.info['delay'] = -1
+                self.info['rev'] = 0
+            else:
+                self.info['delay'] = total_time/total_rev_packs
+                self.info['rev'] = total_rev_packs/cnt
+            return 0
+    
     def send_msg(self,msg:str):
         if self.ss is None:
             with self.log_lock:
@@ -242,6 +307,7 @@ class Server:
                 return
             with self.log_lock:
                 self.log_buff.append(utils.msg_with_time('Message has been sent to {}'.format(self.ss_ip)))
+                
     def msg_rev_thread(self):
         serve_start = time.time()
         while time.time() - serve_start < self.meta['closetime']:
@@ -263,13 +329,14 @@ class Server:
                                     flag = False
                                     break
                             try:
-                                buff_str = self.ss.recv(1024).decode('utf-8')
+                                with self.rev_lock:
+                                    buff_str = self.ss.recv(1024).decode('utf-8')
                                 if buff_str == "":  # 为空说明未收到任何数据，重新接收
                                     continue
                                 ## 以下为服务端的响应程序
                                 buff = json.loads(buff_str)  # dict
                                 if buff['type'] == Protocol.SEND_NET_STATE.value:  # 网络延迟测试    
-                                    data = dict(type=Protocol.SEND_NET_STATE.value,content='from {}'.format(addr))
+                                    data = dict(type=Protocol.REV_NET_STATE.value,content='from {}'.format(addr))
                                     data_str = json.dumps(data)
                                     self.ss.send(data_str.encode('utf-8'))
                                 elif buff['type'] == Protocol.SEND_MESSAGE.value:
@@ -281,11 +348,21 @@ class Server:
                                 elif buff['type'] == Protocol.RECEIVE_MESSAGE.value:
                                     with self.log_lock:
                                         self.log_buff.append(utils.msg_with_time('Message Received'))
-                                    
                                 elif buff['type'] == Protocol.CLOSE_CONNECTION.value:
+                                    data = dict(type=Protocol.RECEIVE_MESSAGE.value,content='Message Recieved!')
+                                    data_str = json.dumps(data)
+                                    self.ss.send(data_str.encode('utf-8'))
                                     with self.log_lock:
                                         self.log_buff.append(utils.msg_with_time('Client Disconnection Actively'))
                                     flag = False
+                                    break
+                                elif buff['type'] == Protocol.SEND_MEASURE_DELAY.value:
+                                    data = dict(type=Protocol.RECEIVE_MEASURE_DELAY.value,content='Measure received')
+                                    data_str = json.dumps(data)
+                                    self.ss.send(data_str.encode('utf-8'))
+                                elif buff['type'] == Protocol.RECEIVE_MEASURE_DELAY.value:
+                                    break
+                                elif buff['type'] == Protocol.REV_NET_STATE.value:
                                     break
                                 else:
                                     data = dict(type=Protocol.SEND_NET_STATE.value,content='Unknown message received!')
@@ -365,21 +442,9 @@ class Server:
                 
         threading.Thread(target=serve_thread).start()
             
-                
+        
+                   
 
-
-if __name__ == "__main__":
-    server = Server('',21353)  # 服务端仅需绑定端口即可
-    server.init_bind()
-    client = Client('127.0.0.1',21353,5,1)  # 客户端则需要知道服务器IP以及服务端口
-    server.auto_serve()
-    client.init_connect()
-    delay_time, rev_rate = client.measure_delay(10)
-    if not isnan(delay_time):
-        print('delay time: {} ms rev_rate:{:.2%}'.format(delay_time*1000,rev_rate))
-    else:
-        print('client error')
-    client.close()
 
 
 

@@ -513,13 +513,15 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
             else:
                 upgrade_error()
                 if gameset_copy.gold < consume_gold:
-                    statustext.set('没有足够的金币')
+                    statustext.set('没有足够的金币！')
                     statusbar.config(foreground='red')
                 elif gameset_copy.diamond < consume_diamond:
-                    statustext.set('没有足够的钻石')
+                    statustext.set('没有足够的钻石！')
                     statusbar.config(foreground='red')
         else:
             upgrade_error()
+            statustext.set('已升至最高级别！')
+            statusbar.config(foreground='red')
     def upgrade_error():
         threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(config['error_sound_file']),1)).start()
     def save():
@@ -700,11 +702,7 @@ def run_net(globalset:utils.Setting):
     
     def disconnect():
         nonlocal ROLE,OPEN_FLAG
-        if isinstance(ROLE,network.Client):
-            ROLE.send_disconnection()
-            time.sleep(0.2)
-            ROLE.close()
-        elif isinstance(ROLE,network.Server):
+        if isinstance(ROLE,(network.Client,network.Server)):
             ROLE.send_disconnection()
             time.sleep(0.2)
             ROLE.close()
@@ -741,6 +739,7 @@ def run_net(globalset:utils.Setting):
             threading.Thread(target=ROLE.msg_rev_thread).start()
             threading.Thread(target=receive_msg_thread,args=(0.25,)).start()
             statustext.set('服务器端口已开启！')
+            measure_delay_button.config(state='normal')
             connect_button.config(text='断开')
         else:
             statustext.set('请等待客户端连接结果...')
@@ -752,8 +751,10 @@ def run_net(globalset:utils.Setting):
                 OPEN_FLAG = False
                 connect_button.config(text='连接')
                 statustext.set('客户端连接失败！')
+                measure_delay_button.config(state='disabled')
                 return
             OPEN_FLAG = True
+            measure_delay_button.config(state='normal')
             ROLE.send_netstate()
             threading.Thread(target=ROLE.msg_rev_thread).start()
             threading.Thread(target=receive_msg_thread,args=(0.25,)).start()
@@ -805,6 +806,8 @@ def run_net(globalset:utils.Setting):
                     time.sleep(wait_time - now + temp_time)
             except AttributeError:
                 break
+            else:
+                pass
         return
             
     def insert_msg(event=None):
@@ -823,7 +826,7 @@ def run_net(globalset:utils.Setting):
         threading.Thread(target=insert_msg_thread).start()
         if not OPEN_FLAG:
             log_window.config(state='normal')
-            log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('由于处于断线状态，消息未被发送')))
+            log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('断线，消息未发送')))
             log_window.see(tk.END)
             log_window.config(state='disabled')
         else:
@@ -831,7 +834,36 @@ def run_net(globalset:utils.Setting):
 
     def on_closing():
         globalset.win_open['net'] = False
+        statustext.set('等待断开连接...')
+        root.update()
+        disconnect()
+        time.sleep(0.3)
         root.destroy()
+    
+    def measure_delay():
+        def measure_delay_thread():
+            statustext.set('测速中...')
+            root.update()
+            res = ROLE.measure_delay()
+            if res == -1:
+                statustext.set('连接错误')
+            else:
+                statustext.set('[{:s}] 延时:{:.2f}ms 丢包率:{:.2%}'.format(utils.pretty_time(time.time()),ROLE.info['delay'],1-ROLE.info['rev']))
+        if not OPEN_FLAG:
+            log_window.config(state='normal')
+            log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('断线，无法测速')))
+            log_window.see(tk.END)
+            log_window.config(state='disabled')
+        else:
+            if ROLE is None:
+                log_window.config(state='normal')
+                log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('未知错误，无法测速')))
+                log_window.see(tk.END)
+                log_window.config(state='disabled')
+                statustext.set('未知错误，请尝试重连')
+            else:
+                threading.Thread(target=measure_delay_thread).start()
+        
 
     if globalset.win_open['net']:
         messagebox.showerror('警示','请勿重复打开窗口。')
@@ -860,6 +892,10 @@ def run_net(globalset:utils.Setting):
     F13.pack(side=tk.TOP)  # Entry Port
     F14 = tk.Frame(F1)
     F14.pack(side=tk.TOP)  # button
+    F141 = tk.Frame(F14)
+    F141.pack(side=tk.TOP)
+    F142 = tk.Frame(F14)
+    F142.pack(side=tk.TOP)
     F15 = tk.Frame(F1)
     F15.pack(side=tk.TOP)  # log
     F21 = tk.Frame(root)
@@ -879,10 +915,12 @@ def run_net(globalset:utils.Setting):
     tk.Label(F13,text='端口号',font=('heiti',12),justify=tk.LEFT).pack(side=tk.LEFT)
     port_entry = tk.Entry(F13,font=('times_new_roman',12),width=16)
     port_entry.pack(side=tk.LEFT)
-    tk.Button(F14,text='清空日志',font=('heiti',12),command=clear_log).pack(side=tk.LEFT,padx=0)
-    tk.Button(F14,text='清空消息',font=('heiti',12),command=clear_msg).pack(side=tk.LEFT,padx=5)
-    connect_button = tk.Button(F14,text='连接',font=('heiti',12),command=connect_or_disconnect)
+    connect_button = tk.Button(F141,text='连接',font=('heiti',12),command=connect_or_disconnect)
     connect_button.pack(side=tk.LEFT,padx=5)
+    measure_delay_button = tk.Button(F141,text='测速',font=('heiti',12),command=measure_delay,state='disabled')
+    measure_delay_button.pack(side=tk.LEFT,padx=5)
+    tk.Button(F142,text='清空日志',font=('heiti',12),command=clear_log).pack(side=tk.LEFT,padx=0)
+    tk.Button(F142,text='清空消息',font=('heiti',12),command=clear_msg).pack(side=tk.LEFT,padx=5)
     log_window = scrolledtext.ScrolledText(F15,width=35,height=8,font=('songti',9),bg='black',fg='white')
     log_window.pack(side=tk.BOTTOM,pady=5)
     log_window.insert(tk.END,'日志窗口\n尚未连接到计算机\n')
