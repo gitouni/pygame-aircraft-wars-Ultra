@@ -848,7 +848,7 @@ def run_net(globalset:utils.Setting):
             if res == -1:
                 statustext.set('连接错误')
             else:
-                statustext.set('[{:s}] 延时:{:.2f}ms 丢包率:{:.2%}'.format(utils.pretty_time(time.time()),ROLE.info['delay'],1-ROLE.info['rev']))
+                statustext.set('[{:s}] 延时:{:.2f}ms 丢包率:{:.2%}'.format(utils.pretty_time(time.time()),ROLE.info['delay']*1000,1-ROLE.info['rev']))
         if not OPEN_FLAG:
             log_window.config(state='normal')
             log_window.insert(tk.END,'[{}]-{}\n'.format(*utils.msg_with_time('断线，无法测速')))

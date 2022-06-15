@@ -21,7 +21,7 @@ class Protocol(Enum):
 
 
 class Client:
-    def __init__(self,host:str,port:int,timeout:float=5.0,max_wait_time:float=1.0):
+    def __init__(self,host:str,port:int,timeout:float=5.0,max_wait_time:float=0.5):
         self.meta = dict(host=host,port=port,timeout=timeout,max_wait_time=max_wait_time)
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.is_open = False
@@ -206,8 +206,8 @@ class Client:
 
     
 class Server:
-    def __init__(self,host:str,port:int,timeout:float=5.0,closetime:float=1000):
-        self.meta = dict(host=host,port=port,timeout=timeout,closetime=closetime)
+    def __init__(self,host:str,port:int,timeout:float=5.0,closetime:float=1000,max_wait_time:float=0.5):
+        self.meta = dict(host=host,port=port,timeout=timeout,closetime=closetime,max_wait_time=max_wait_time)
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.is_open = True
         self.content_buff = []
