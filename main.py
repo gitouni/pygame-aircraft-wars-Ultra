@@ -1,4 +1,5 @@
 # coding=utf-8
+import json
 import os
 import pygame
 # extend import
@@ -93,15 +94,10 @@ def _run_game(statustext:tk.StringVar,root:tk.Tk):
 
 def _run_video(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET
+    statustext.set('加载录像')
     root.update()
-    root.withdraw()
-    try:
-        run_log_video(GLOBAL_SET,SIM_INTERVAL,VOLUME)
-        root.deiconify()
-        statustext.set('录像正常退出')
-    except:
-        root.deiconify()
-        statustext.set('录像异常退出')
+    run_log_video(GLOBAL_SET,SIM_INTERVAL,VOLUME)
+
     
 
 def _run_setting(info:utils.Info):
@@ -123,6 +119,7 @@ def _run_lab():
 def _run_account(info:tk.StringVar):
     global gameset,GLOBAL_SET
     run_account(gameset,GLOBAL_SET,info,VOLUME)
+    gameset.__dict__.update(BASIC_SETTING)
 
 def _run_scene_loading(info:tk.StringVar):
     global GLOBAL_SET
@@ -148,7 +145,11 @@ def run_main():
                     root.destroy()
                     return
         gameset.save()
+        pygame.mixer.quit()
+        pygame.font.quit()
+        pygame.quit()
         root.destroy()
+        
     init_pygame()
     SIGN_POS = CONFIG['main']['sign_pos']
     account_pos = CONFIG['main']['account_pos']
@@ -230,6 +231,7 @@ def run_main():
                 gameset.setting['sim_interval'] = SIM_INTERVAL
                 gameset.setting['volume'] = VOLUME
                 gameset.setting['log'] = LOGGING
+            gameset.__dict__.update(BASIC_SETTING)
             recent_name = os.path.splitext(recent_file)[0]
             statustext.set("欢迎, {}".format(recent_name))
     root.protocol('WM_DELETE_WINDOW', quit_main)
@@ -267,7 +269,8 @@ if __name__ == "__main__":
 
     with open("config.yml",'r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
-    
+    with open(CONFIG['account']['basic_setting'],'r')as f:
+        BASIC_SETTING = json.load(f)
     gameset = game_set() # 游戏设置类
     GLOBAL_SET = utils.Setting()
     SIM_INTERVAL = CONFIG['setting']['sim_interval']

@@ -1,3 +1,4 @@
+from typing import List
 import os
 import time
 from tkinter import simpledialog
@@ -330,9 +331,9 @@ class AutoGameRun:
     def quit_game(self):
         if self.gameset.path:
             self.gameset.save()
-        pygame.mixer.quit()
-        pygame.font.quit()
-        pygame.quit()
+        # pygame.mixer.quit()
+        # pygame.font.quit()
+        # pygame.quit()
         self.globalset.win_open['game'] = False
         self.clear_sprite()
         self.scene_list.clear()
@@ -392,9 +393,9 @@ class LogGameRun(AutoGameRun):
         return running, pause
     
     def quit_game(self):
-        pygame.mixer.quit()
-        pygame.font.quit()
-        pygame.quit()
+        # pygame.mixer.quit()
+        # pygame.font.quit()
+        # pygame.quit()
         self.globalset.win_open['game'] = False
         self.clear_sprite()
         self.scene_list.clear()

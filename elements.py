@@ -182,7 +182,7 @@ class fighter(pygame.sprite.Sprite):
                                    sim_interval=self.sim_interval,volume_multiply=self.volume_multiply
                                    )
                 self.hook_bullet_group.add(missile0)
-            self.energy -= missile_num*5
+            self.energy -= missile_num*10
             self.cooling -= missile_num*3
         self.launching = False
     def update(self):  # 更新飞船坐标，允许2个方向重合运动，但相互冲突的方向只能选择其一
@@ -223,7 +223,7 @@ class fighter(pygame.sprite.Sprite):
             if self.shooting_time-self.init_time >= self.shooting_cd:
                 if self.energy > (self.shoot1+self.shoot2+self.shoot3) and self.cooling > 0: # 满足要求时保持射击
                     self.shoot() # 射击
-                    self.shooting_time = 0
+                    self.shooting_time -= self.shooting_cd
                     self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3)/self.shooting_cd*25 # 消耗能量
                     self.cooling -= (self.shoot1)/self.shooting_cd*25
                 else:
@@ -232,7 +232,7 @@ class fighter(pygame.sprite.Sprite):
             if self.launching_time - self.init_time >= self.launching_cd and\
                self.energy >= 5 and self.cooling >= 3:
                    self.launch_missile()
-                   self.launching_time = 0
+                   self.launching_time -= self.launching_cd
             else:
                 self.launching = False
         self.update_state() # 回复能量和冷却
@@ -285,6 +285,7 @@ class bullet(pygame.sprite.Sprite):
         
     def dead(self):
         self.kill()
+
 # 导弹类
 class missile(pygame.sprite.Sprite):
     def __init__(self,screen:pygame.Surface,pos,speed_dir,ac_time,max_speed,damage,flying_time,
