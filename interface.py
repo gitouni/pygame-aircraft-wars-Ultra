@@ -56,7 +56,7 @@ def run_help(globalset:utils.Setting):
         bd=0, highlightthickness=0)
     canvas.pack()
     notebook = scrolledtext.ScrolledText(root,width=win_width-10,height=win_height-60,font=('songti',10))
-    notebook.insert('0.0',help_operation_txt)
+    notebook.insert('0.0',"请单击以上按钮查看帮助")
     notebook.pack()
     bg_img = Image_load(CONFIG['background_img'],(win_width,win_height))
     operation_icon = Image_load(CONFIG['help_operation_icon'],small_button_size)

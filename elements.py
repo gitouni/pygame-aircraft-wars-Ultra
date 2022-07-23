@@ -14,6 +14,7 @@ from math import sqrt,pi,cos,sin,atan2,exp
 import utils
 from Game_set import game_set
 import threading
+from PIL import Image
 
 with open("config.yml",'r')as f:
     CONFIG = yaml.load(f,yaml.SafeLoader)
@@ -57,9 +58,11 @@ class fighter(pygame.sprite.Sprite):
         self.img_ad = os.path.join('player_png',self.player_png['LEFT'][self.agl])
         self.size = (55,104)
         self.radius = sqrt(self.size[0]*self.size[1]/3.14) # 碰撞有效半径
-        self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)  # 加载图形，并缩小像素
+        image = Image.open(self.img_ad).resize(self.size,Image.BILINEAR)
+        self.image = pygame.image.fromstring(image.tobytes(),image.size,image.mode)  # 加载图形，并缩小像素
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()  # 占用矩形范围
+        self.rgb_offset = (0,0,0)
         self.pos = self.rect.centerx,self.rect.centery
         self.bullet_speed = 10
         self.bullet_ID = 0
@@ -111,6 +114,18 @@ class fighter(pygame.sprite.Sprite):
         self.missile_sound_file = os.path.join(self.mp3_path,player_dict['missile_sound_file'])
         self.explode_sound_file = os.path.join(self.mp3_path,player_dict['explode_sound_file'])
         self.hit_sound_file = os.path.join(self.mp3_path,player_dict['hit_sound_file'])
+    def image_load(self):
+        image = Image.open(self.img_ad)
+        image = image.resize(self.size,Image.BILINEAR)  # not inplace operation
+        img = np.array(image)  # (H,W,3)
+        for i in range(3):
+            if self.rgb_offset[i] != 0:
+                img[...,i] += self.rgb_offset[i]
+        np.clip(img,0,255,out=img)
+        image = Image.fromarray(img)
+        self.image = pygame.image.fromstring(image.tobytes(),image.size,image.mode)  # 加载图形，并缩小像素
+        self.mask = pygame.mask.from_surface(self.image)
+    
     def game_set(self,gameset:game_set):
         self.HP = gameset.player_HP_list[gameset.player_HP_level]
         self.HP_max = self.HP
@@ -214,8 +229,9 @@ class fighter(pygame.sprite.Sprite):
             self.img_ad = os.path.join('player_png',self.player_png['LEFT'][abs(self.agl)])
         else:
             self.img_ad = os.path.join('player_png',self.player_png['RIGHT'][abs(self.agl)])
-        self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)
-        self.mask = pygame.mask.from_surface(self.image)
+        # self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)
+        # self.mask = pygame.mask.from_surface(self.image)
+        self.image_load()
         self.blitme()
         self.update_launch_time()
         self.update_shoot_time()

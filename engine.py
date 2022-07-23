@@ -331,9 +331,9 @@ class AutoGameRun:
     def quit_game(self):
         if self.gameset.path:
             self.gameset.save()
-        # pygame.mixer.quit()
-        # pygame.font.quit()
-        # pygame.quit()
+        pygame.mixer.quit()
+        pygame.font.quit()
+        pygame.quit()
         self.globalset.win_open['game'] = False
         self.clear_sprite()
         self.scene_list.clear()
@@ -342,7 +342,7 @@ class AutoGameRun:
             return
         date = time.localtime(time.time())
         date_str = time.strftime(r"%Y-%m-%d-%H-%M-%S",date)
-        save_name = simpledialog.askstring('保存录像','请键入保存录像的名称\n空值或Cancel表示不保存。',initialvalue=date_str)
+        save_name = simpledialog.askstring('保存录像','请键入保存录像的名称\n空值或Cancel表示不保存。\n在设置中取消勾选则不会再提示。',initialvalue=date_str)
         if not save_name:
             return
         os.makedirs('video',exist_ok=True)
@@ -393,9 +393,9 @@ class LogGameRun(AutoGameRun):
         return running, pause
     
     def quit_game(self):
-        # pygame.mixer.quit()
-        # pygame.font.quit()
-        # pygame.quit()
+        pygame.mixer.quit()
+        pygame.font.quit()
+        pygame.quit()
         self.globalset.win_open['game'] = False
         self.clear_sprite()
         self.scene_list.clear()
@@ -484,9 +484,6 @@ class LogGameRun(AutoGameRun):
                         self.screen.blit(success_font_surface,self.CONFIG['setting']['success_font_pos'])
             pygame.display.flip()  # 更新画面
             clock.tick(1000.0/self.sim_interval)
-        self.gameset.gold = int(player_info.gold)
-        self.gameset.diamond = int(player_info.diamond)
-        self.gameset.high_score = max(self.gameset.high_score,player_info.score)
         self.quit_game()
         
 class TwoPlayerRun(AutoGameRun):

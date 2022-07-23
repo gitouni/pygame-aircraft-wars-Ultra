@@ -48,6 +48,7 @@ def run_setting(globalset:utils.Setting,info:tk.StringVar)->None:
     sim_interval_list = list(CONFIG['sim_interval_list'])
     sim_interval_list.reverse()
     volume_list = [i*(CONFIG['max_volume']-CONFIG['min_volume'])/CONFIG['steps']+CONFIG['min_volume'] for i in range(CONFIG['steps']+1)]
+    # load history setting
     try:
         sim_interval_index = sim_interval_list.index(SIM_INTERVAL)
     except:
@@ -91,6 +92,7 @@ def _run_game(statustext:tk.StringVar,root:tk.Tk):
     except:
         root.deiconify()
         statustext.set('游戏异常退出')
+        GLOBAL_SET.win_open['game'] = False
 
 def _run_video(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET
