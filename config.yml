@@ -2,11 +2,11 @@ interface:
   background_img: background_jpg/b2.jpg
   lab_img: background_jpg/lab.png
   lab_screen_size: [600,350]
-  refresh_sound_file: Sound_effect/refresh.wav
-  upgrade_sound_file: Sound_effect/pay.wav
-  save_sound_file: Sound_effect/ensure.wav
-  error_sound_file: Sound_effect/error.wav
-  exit_sound_file: Sound_effect/tip.wav
+  refresh_sound_file: Sound_effect/refresh.mp3
+  upgrade_sound_file: Sound_effect/pay.mp3
+  save_sound_file: Sound_effect/ensure.mp3
+  error_sound_file: Sound_effect/error.mp3
+  exit_sound_file: Sound_effect/tip.mp3
   screen_size: [165,220]
   lab_grid:
     background_color: "#2C3B35"
@@ -23,11 +23,11 @@ interface:
 
 account:
   basic_setting: data/basic_setting.json
-  refresh_sound_file: Sound_effect/refresh.wav
-  upgrade_sound_file: Sound_effect/pay.wav
-  save_sound_file: Sound_effect/ensure.wav
-  error_sound_file: Sound_effect/error.wav
-  exit_sound_file: Sound_effect/tip.wav
+  refresh_sound_file: Sound_effect/refresh.mp3
+  upgrade_sound_file: Sound_effect/pay.mp3
+  save_sound_file: Sound_effect/ensure.mp3
+  error_sound_file: Sound_effect/error.mp3
+  exit_sound_file: Sound_effect/tip.mp3
   initial_gold: 20000
   initial_diamond: 200
 
@@ -78,7 +78,7 @@ main:
   help_color: "#2C3B35"
   setting_color: "#2C3B35"
   log_color: "#2C3B35"
-  exit_sound_file: Sound_effect/tip.wav
+  exit_sound_file: Sound_effect/tip.mp3
 
 help:
   background_img: background_jpg/b1.jpg
@@ -119,7 +119,7 @@ setting:
   font: 'times_new_roman'
   sim_interval: 15  # (ms)
   volume: 1.0
-  log: false
+  log: true
   screen_size: [480,600]
   status_bar_size: [480,30]
   gamescreen_size: [480,570]
@@ -127,8 +127,8 @@ setting:
   bg_rollv: 18
   account_path: account/
   scene_path: data/demo_scene.json
-  success_sound_file: Sound_effect/mission_accomplished.wav
-  fail_sound_file: Sound_effect/mission_failed.wav
+  success_sound_file: Sound_effect/mission_accomplished.mp3
+  fail_sound_file: Sound_effect/mission_failed.mp3
   default_ico: icon_png/fighter_icon.png
   main_ico: icon/main.png
   lab_ico: icon/engineering.png
@@ -140,12 +140,12 @@ setting:
 player:
   missile:
     img: missile_png/missile0.png
-    explode_sound_file: bomb_fire.wav
+    explode_sound_file: bomb_fire.mp3
   mp3_path: Sound_effect/
   bullet_sound_file: fighter_bullet_fire.mp3
   missile_sound_file: fighter_missile_fire.mp3
   explode_sound_file: fighter_explode.mp3
-  hit_sound_file: hurt2.wav
+  hit_sound_file: hurt2.mp3
 
 
 bullet:
@@ -155,18 +155,18 @@ bullet:
 enemy:
   path: enemy_png/
   setting: data/enemy_info.csv
-  explode_sound_file: Sound_effect/small_explode.wav
+  explode_sound_file: Sound_effect/small_explode.mp3
   big_explode_sound_file: Sound_effect/fighter_explode.mp3
   hurt_sound_file: Sound_effect/metal1.mp3
-  diamond_sound_file: Sound_effect/diamond.wav
+  diamond_sound_file: Sound_effect/diamond.mp3
 
 
 enemyfire:
   path: enemyfire_png/
   setting: data/enemyfire_info.csv
   type_a_sound_file: Sound_effect/laser_big_oneshot.mp3
-  type_b_sound_file: Sound_effect/launch1.wav
-  explode_sound_file: Sound_effect/bomb_fire.wav
+  type_b_sound_file: Sound_effect/launch1.mp3
+  explode_sound_file: Sound_effect/bomb_fire.mp3
 
 enemy_path:
   path: path_josn
