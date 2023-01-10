@@ -17,7 +17,7 @@ with open("config.yml",'r')as f:
 ICON_CONFIG = CONIFG['icon']
 GAME_SCREEN = CONIFG['setting']['gamescreen_size']
 
-sim_interval = CONIFG['setting']['sim_interval']
+# sim_interval = CONIFG['setting']['sim_interval']
 
 # 警告标志
 class warn_mark(pygame.sprite.Sprite):
@@ -124,7 +124,7 @@ class scene1():
     def scene_init(self): # 初始化场景，加入敌机，与__init__()区别开，节省内存开支
         for i in range(self.N):
             enemy0 = enemy(self.screen,self.enemy_ID,self.PointList[0],self.speed,(0,-1),self.bullet_speed,self.bullet_ID,
-                           self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,sim_interval,self.volume_multiply)
+                           self.hook_global_info,self.hook_enemy_group,self.hook_enemyfire_group,self.hook_background_group,self.sim_interval,self.volume_multiply)
             enemy0.data = [0,0,len(self.path),i] 
             '''
             data[0]:敌机目前处在的最小分段点
