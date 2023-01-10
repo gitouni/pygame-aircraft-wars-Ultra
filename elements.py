@@ -559,6 +559,7 @@ class enemy(pygame.sprite.Sprite):
             self.rect.center = self.pos
     def move_to(self,P):
         self.rect.center = P
+        self.pos = P
         self.blitme()
     def hurt(self,damage):
         self.HP -= damage
@@ -573,7 +574,7 @@ class enemy(pygame.sprite.Sprite):
         prob_level = 0
         if diamond_prob < self.diamond:
             prob_level = 5 - np.digitize(diamond_prob,np.linspace(0,self.diamond,5))
-            threading.Thread(target=utils.thread_play_music,args=(self.diamond_sound_file,1.0,0.8*self.volume_multiply)).start()
+            threading.Thread(target=utils.thread_play_music,args=(self.diamond_sound_file,0.8*self.volume_multiply)).start()
         self.hook_global_info.update(self.hook_global_info.gold + self.gold, self.hook_global_info.diamond+prob_level, self.hook_global_info.score + self.score)
         explode_r = sqrt(self.size[0]*self.size[1]) # 换算正方型边长
         explode0 = explode(self.screen,self.rect.center,self.sim_interval,(explode_r,explode_r))
