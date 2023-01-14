@@ -108,6 +108,7 @@ skin:
   path: player_png
   png_data: [data/player_1.txt, data/player_2.txt, data/player_3.txt, data/player_4.txt]
   canvas_size: [100,220]
+  save_sound_file: Sound_effect/ensure.mp3
   
 net:
   icon: icon/internet.png

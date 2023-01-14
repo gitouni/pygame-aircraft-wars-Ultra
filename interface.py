@@ -11,7 +11,6 @@ from copy import deepcopy
 from Game_set import game_set
 import utils
 import json
-import threading
 import time
 import network
 import re
@@ -27,10 +26,34 @@ def Image_load(file:str,size:tuple)->ImageTk.PhotoImage:
 def run_help(globalset:utils.Setting):
     def show_operation_txt():
         notebook.delete('0.0',tk.END)
-        notebook.insert('0.0',help_operation_txt)
+        modify_color(help_operation_txt)
+        # notebook.insert('0.0',help_operation_txt)
     def show_note_txt():
         notebook.delete('0.0',tk.END)
-        notebook.insert('0.0',help_note_txt)
+        modify_color(help_note_txt)
+        # notebook.insert('0.0',help_note_txt)
+    def modify_color(text:str):
+        color_idx = list(re.finditer('\[.+?\]',text,re.M))  # [(s1,e1),(s1,e2),...]
+        if len(color_idx) == 0:
+            notebook.insert('0.0',text)
+            return
+        sp = 0
+        ep = len(text)
+        while sp < ep:
+            if len(color_idx) > 0:
+                span = color_idx.pop(0).span()
+                if sp < span[0]:
+                    notebook.insert(tk.END,text[sp:span[0]])
+                notebook.tag_add('tag_red',tk.END)
+                notebook.insert(tk.END,text[span[0]+1:span[1]-1],'tag_red')
+                notebook.tag_add('tag_black',tk.END)
+                sp = span[1]
+                continue
+            else:
+                notebook.insert(tk.END,text[sp:ep])
+                sp = ep
+                
+        
     def on_closing():
         globalset.win_open['help'] = False
         root.destroy()
@@ -57,6 +80,8 @@ def run_help(globalset:utils.Setting):
     canvas.pack()
     notebook = scrolledtext.ScrolledText(root,width=win_width-10,height=win_height-60,font=('songti',10))
     notebook.insert('0.0',"请单击以上按钮查看帮助")
+    notebook.tag_config('tag_red',foreground='red')
+    notebook.tag_config('tag_black',foreground='black')
     notebook.pack()
     bg_img = Image_load(CONFIG['background_img'],(win_width,win_height))
     operation_icon = Image_load(CONFIG['help_operation_icon'],small_button_size)
@@ -70,9 +95,11 @@ def run_help(globalset:utils.Setting):
     canvas.create_window(*CONFIG['help_operation_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=operation_button)
     canvas.create_window(*CONFIG['help_note_pos'],anchor='nw',width=button_size[0],height=button_size[1],window=note_button)
     root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.tkraise('.')
+    root.focus()
     root.mainloop()
 
-def run_skin(globalset:utils.Setting,info:tk.StringVar):
+def run_skin(globalset:utils.Setting,info:tk.StringVar,debug=False):
     def load(event=None):
         nonlocal globalset,info
         index = listbox.curselection()
@@ -82,24 +109,95 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
         index = index[0]
         globalset.player_index = index
         info.set('选择皮肤[{}]成功！'.format(os.path.splitext(os.path.basename(CONFIG['png_data'][index]))[0]))
-    
-    def preview(event=None):
+        threading.Thread(target=utils.thread_play_music,args=(CONFIG['save_sound_file'],1)).start()
+        
+    def preview(index:int):
         nonlocal img
+        png_path = os.path.join(CONFIG['path'],skin_pack_list[index][pos_side][pos_index])
+        img = Image_load(png_path,CONFIG['canvas_size'])
+        canvas.create_image(0,0,anchor='nw',image=img)
+        
+    def reset(event=None):
+        nonlocal pos_index, pos_side
+        pos_index = 0
+        pos_side = 'LEFT'
         index = listbox.curselection()
         if len(index) == 0:
             return  # 静默
         index = index[0]
-        png_path = os.path.join(CONFIG['path'],skin_pack_list[index]['LEFT'][0])
-        img = Image_load(png_path,CONFIG['canvas_size'])
-        canvas.create_image(0,0,anchor='nw',image=img)
+        preview(index)
+        
+    def left_shift(event=None):
+        nonlocal pos_index, pos_side
+        index = listbox.curselection()
+        if len(index) == 0:
+            return  # 静默
+        index = index[0]
+        if pos_side == 'LEFT':
+            left_num = len(skin_pack_list[index]['LEFT'])
+            pos_index = min(left_num-1,pos_index+1)
+        else:
+            pos_index -= 1
+            if pos_index == 0:
+                pos_side = 'LEFT'
+        preview(index)
+    
+    def right_shift(event=None):
+        nonlocal pos_index, pos_side
+        index = listbox.curselection()
+        if len(index) == 0:
+            return  # 静默
+        index = index[0]
+        if pos_side == 'RIGHT':
+            right_num = len(skin_pack_list[index]['RIGHT'])
+            pos_index = min(right_num-1,pos_index+1)
+        else:
+            pos_index -= 1
+            if pos_index < 0:
+                pos_side = 'RIGHT'
+                pos_index = abs(pos_index)
+        preview(index)
+        
+    def next_item(event=None):
+        index = listbox.curselection()
+        if len(index) == 0:
+            index = 0
+        else:
+            index = index[0]
+            index = min(index+1,listbox.size()-1)
+        listbox.selection_clear(0,tk.END)
+        listbox.select_set(index)
+        listbox.activate(index)
+        listbox.see(index)
+        reset()
+        
+    def last_item(event=None):
+        index = listbox.curselection()
+        if len(index) == 0:
+            index = 0
+        else:
+            index = index[0]
+            index = max(index-1,0)
+        listbox.selection_clear(0,tk.END)
+        listbox.select_set(index)
+        listbox.activate(index)
+        listbox.see(index)
+        reset()
         
     def on_closing():
         globalset.win_open['skin'] = False
         root.destroy()
+        
+    def print_coord(event:tk.Event):
+        print(f"({event.x},{event.y})")
+        
     if globalset.win_open['skin']:
         messagebox.showerror('警示','请勿重复打开窗口。')
         return
+    
     root = tk.Toplevel()
+    if debug:
+        root.bind("<Button-1>",print_coord) # for debug
     globalset.win_open['skin'] = True
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)['skin']
@@ -107,6 +205,8 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
     for path in CONFIG['png_data']:
         skin_pack = utils.csv2dict(path)
         skin_pack_list.append(skin_pack)
+    pos_index = 0
+    pos_side = 'LEFT'
     root.title("战机皮肤")
     root.iconphoto(True,tk.PhotoImage(file=CONFIG['icon']))
     F1 = tk.Frame(root)
@@ -117,6 +217,19 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
     F11.pack(side=tk.TOP)
     F12 = tk.Frame(F1)
     F12.pack(side=tk.BOTTOM)
+    F21 = tk.Frame(F2)
+    F21.pack(side=tk.TOP)
+    F22 = tk.Frame(F2)
+    F22.pack(side=tk.BOTTOM)
+    Lbutton = tk.Button(F21,text='←',bg='white',command=left_shift)
+    Lbutton.pack(side=tk.LEFT,padx=10)
+    Rbutton = tk.Button(F21,text='→',bg='white',command=right_shift)
+    Rbutton.pack(side=tk.RIGHT,padx=10)
+    root.bind("<KeyPress-Left>",left_shift)
+    root.bind("<KeyPress-Right>",right_shift)
+    root.bind("<KeyPress-Up>",last_item)
+    root.bind("<KeyPress-Down>",next_item)
+    root.bind("<space>",reset)
     button1 = tk.Button(F11,text='装配',bg='white',font=('songti',12),command=load)
     button1.pack(side=tk.LEFT,padx=10)
     button2 = tk.Button(F11,text='返回',bg='white',font=('songti',12),command=on_closing)
@@ -129,16 +242,18 @@ def run_skin(globalset:utils.Setting,info:tk.StringVar):
     scbar.pack(side=tk.RIGHT,fill=tk.Y)
     listbox.pack(fill=tk.BOTH)
     listbox.bind("<Double-Button-1>",load)
-    listbox.bind("<<ListboxSelect>>",preview)
+    listbox.bind("<<ListboxSelect>>",reset)
     for path in CONFIG['png_data']:
         listbox.insert(tk.END,os.path.splitext(os.path.basename(path))[0])
     listbox.selection_set(globalset.player_index)
-    canvas = tk.Canvas(F2,width=CONFIG['canvas_size'][0],height=CONFIG['canvas_size'][1])
+    canvas = tk.Canvas(F22,width=CONFIG['canvas_size'][0],height=CONFIG['canvas_size'][1])
     canvas.pack()
     png_path = os.path.join(CONFIG['path'],skin_pack_list[globalset.player_index]['LEFT'][0])
     img = Image_load(png_path,CONFIG['canvas_size'])
     canvas.create_image(0,0,anchor='nw',image=img)
     root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.tkraise('.')
+    root.focus()
     root.mainloop()
 
 def run_log_video(globalset:utils.Setting,sim_interval:float,volume:float):
@@ -224,7 +339,13 @@ def run_log_video(globalset:utils.Setting,sim_interval:float,volume:float):
     for path in log_list:
         listbox.insert(tk.END,os.path.splitext(path)[0])
     root.protocol('WM_DELETE_WINDOW', on_closing)
-    root.mainloop()
+    try:
+        root.tkraise('.')
+        root.focus()
+        root.mainloop()
+    except:
+        globalset.win_open['log'] = False
+        
 
 def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
     def load_json(index:int)->dict:
@@ -344,6 +465,8 @@ def run_scene_loading(globalset:utils.Setting,info:tk.StringVar):
     img = Image_load(background_path,CONFIG['background_size'])
     canvas.create_image(0,0,anchor='nw',image=img)
     root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.tkraise('.')
+    root.focus()
     root.mainloop()
 
 def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volume:float=1.0):
@@ -430,7 +553,7 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
     with open('config.yml','r')as f:
         CONFIG = yaml.load(f,yaml.SafeLoader)
     account_path = CONFIG['setting']['account_path']
-    os.makedirs(account_path,exist_ok=True)
+    os.makedirs(account_path,exist_ok=True)  # 防止account空文件夹被误删
     if len(os.listdir(account_path))==0:
         exist_account = False
     else:
@@ -467,13 +590,15 @@ def run_account(gameset:game_set,globalset:utils.Setting,info:tk.StringVar,volum
             account_listbox.insert(tk.END,os.path.splitext(account)[0])
         account_listbox.selection_set(cur_index)
     root.protocol('WM_DELETE_WINDOW',on_closing)
+    root.tkraise('.')
+    root.focus()
     root.mainloop()
 
 def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     def refresh():
         nonlocal gameset_copy
         gameset_copy.__dict__ = deepcopy(gameset.__dict__)
-        threading.Thread(target=utils.thread_play_music,args=(config['refresh_sound_file'],1,1.0)).start()
+        threading.Thread(target=utils.thread_play_music,args=(config['refresh_sound_file'],1)).start()
         flash()
         statustext.set('重置成功！')
         statusbar.config(foreground='blue')
@@ -523,12 +648,12 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
             statustext.set('已升至最高级别！')
             statusbar.config(foreground='red')
     def upgrade_error():
-        threading.Thread(target=utils.play_music,args=(pygame.mixer.Sound(config['error_sound_file']),1)).start()
+        threading.Thread(target=utils.thread_play_music,args=(config['error_sound_file'],1)).start()
     def save():
         nonlocal gameset,globalset
         gameset.__dict__ = deepcopy(gameset_copy.__dict__)
         globalset.has_saved = False
-        threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1,1.0)).start()
+        threading.Thread(target=utils.thread_play_music,args=(config['save_sound_file'],1)).start()
         statustext.set('保存成功！')
         statusbar.config(foreground='blue')
     # for debugging
@@ -539,7 +664,7 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     def on_closing():
         nonlocal gameset
         if gameset.__dict__ != gameset_copy.__dict__:
-            threading.Thread(target=utils.thread_play_music,args=(config['exit_sound_file'],1,2.0)).start()
+            threading.Thread(target=utils.thread_play_music,args=(config['exit_sound_file'],1)).start()
             if messagebox.askyesno("提示", "未保存，是否退出?"):
                 globalset.win_open['lab'] = False
                 root.destroy()
@@ -664,6 +789,8 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
     canvas.create_window(*config['lab_grid']['refresh_icon'],width=65,height=25,window=refresh_button)
     canvas.create_window(*config['lab_grid']['save_icon'],width=65,height=25,window=save_button)
     root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.tkraise('.')
+    root.focus()
     root.mainloop()
 
 def run_net(globalset:utils.Setting):
@@ -942,6 +1069,8 @@ def run_net(globalset:utils.Setting):
     FIRST_LOG = True
     ROLE = None
     root.protocol('WM_DELETE_WINDOW', on_closing)
+    root.tkraise('.')
+    root.focus()
     root.mainloop()
     
     
