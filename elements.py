@@ -8,6 +8,7 @@ import pygame.font
 import pygame.mask
 import pygame.display
 import os
+from copy import deepcopy
 import yaml
 import numpy as np
 from math import sqrt,pi,cos,sin,atan2,exp
@@ -63,7 +64,7 @@ class fighter(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()  # 占用矩形范围
         self.rgb_offset = (0,0,0)
-        self.pos = self.rect.centerx,self.rect.centery
+        self.pos = list(self.rect)
         self.bullet_speed = 10
         self.bullet_ID = 0
         self.bullet_pos = [(int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
@@ -75,6 +76,7 @@ class fighter(pygame.sprite.Sprite):
         self.screen_rect = self.hook_gamescreen.get_rect()  # 活动矩形范围
         self.rect.centerx = self.screen_rect.centerx # 初始化的位置
         self.rect.bottom = self.screen_rect.bottom
+        self.pos = list(self.rect.center)
         self.moving_right,self.moving_left,self.moving_up,self.moving_down = False,False,False,False  # 禁用所有的行动位置
         # 以上为基本参数
         self.shooting = False
@@ -154,7 +156,6 @@ class fighter(pygame.sprite.Sprite):
         self.launching_time = min(self.launching_time,self.launching_cd)
     def update_bltpos(self):
         # 更新发射子弹的位置
-        self.pos = self.rect.centerx,self.rect.centery
         self.bullet_pos = [(int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
                         (int(self.pos[0]+0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
                         (int(self.pos[0]-0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
@@ -188,7 +189,6 @@ class fighter(pygame.sprite.Sprite):
         threading.Thread(target=utils.thread_play_music,args=(self.missile_sound_file,self.volume_multiply)).start()
         self.update_bltpos()
         if self.missile_num > 0:
-            self.update_bltpos()
             missile_num = int(min(self.missile_num,self.energy//5,self.cooling//3))
             for i in range(missile_num):
                 missile0 = missile(self.screen,self.missile_pos[i],self.missile_dir[i],
@@ -210,13 +210,13 @@ class fighter(pygame.sprite.Sprite):
                 return 1
         
         if self.moving_right == True and self.rect.right < self.screen_rect.right:
-            self.rect.centerx += self.speed
+            self.pos[0] += self.speed
         if self.moving_left == True and self.rect.left > 0:
-            self.rect.centerx -= self.speed
+            self.pos[0] -= self.speed
         if self.moving_up == True and self.rect.top > 0:
-            self.rect.bottom -= self.speed
+            self.pos[1] -= self.speed
         if self.moving_down == True and self.rect.bottom < screen_size[1]:
-            self.rect.bottom += self.speed
+            self.pos[1] += self.speed
         if self.moving_right == True:
             self.rol += 1
         elif self.moving_left == True:
@@ -229,6 +229,7 @@ class fighter(pygame.sprite.Sprite):
             self.img_ad = os.path.join('player_png',self.player_png['LEFT'][abs(self.agl)])
         else:
             self.img_ad = os.path.join('player_png',self.player_png['RIGHT'][abs(self.agl)])
+        self.rect.centerx, self.rect.centery = self.pos
         # self.image = pygame.transform.scale(pygame.image.load(self.img_ad),self.size)
         # self.mask = pygame.mask.from_surface(self.image)
         self.image_load()
@@ -285,7 +286,8 @@ class bullet(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(bullet_image,-180/pi*atan2(speed_dir[0],-speed_dir[1]))
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect() 
-        self.rect.centerx,self.rect.centery = location
+        self.rect.center = location
+        self.pos = list(self.rect.center)
         self.speed_dir = speed_dir
         self.speed_value = speed * sim_interval/10.0
         self.speed = utils.speed_tran(self.speed_value,speed_dir)
@@ -293,7 +295,9 @@ class bullet(pygame.sprite.Sprite):
     def blitme(self):
         self.screen.blit(self.image,self.rect)
     def update(self):
-        self.rect.move_ip(self.speed)
+        self.pos[0] += self.speed[0]
+        self.pos[1] += self.speed[1]
+        self.rect.centerx, self.rect.centery = self.pos
         if utils.transgress_detect(self.rect): # 子弹越界删除
             self.kill()
         else:
@@ -330,6 +334,7 @@ class missile(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.midbottom = pos # 位置赋值
+        self.pos = list(self.rect.center)
         self.explode_size = (30,30)
         self.target = None # 锁定的单位
         self.init_time = 0
@@ -380,12 +385,9 @@ class missile(pygame.sprite.Sprite):
         self.update_pos()
     def update_pos(self):
         self.speed_vector = utils.speed_tran(self.speed,self.speed_dir)
-        self.move_dxy[0] += self.speed_vector[0]
-        self.move_dxy[1] += self.speed_vector[1]
-        intmove_dxy = round(self.move_dxy[0]), round(self.move_dxy[1])
-        self.rect.move_ip(intmove_dxy)
-        self.move_dxy[0] -= intmove_dxy[0]
-        self.move_dxy[1] -= intmove_dxy[1]
+        self.pos[0] += self.speed_vector[0]
+        self.pos[1] += self.speed_vector[1]
+        self.rect.centerx, self.rect.centery = self.pos
         self.blitme()
     def dead(self):
         if self.target is not None:
@@ -435,15 +437,15 @@ class enemy_fire(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image,self.size)
         self.rect = self.image.get_rect() 
         self.rect.centerx,self.rect.bottom = location
+        self.pos = list(self.rect.center)
         self.mask = pygame.mask.from_surface(self.image)
         self.damage = float(enemyfire_dict['damage'][self.ID]) # 子弹伤害数值
     def blitme(self):
         self.screen.blit(self.image,self.rect)
     def update(self):
-        self.move_dxy = [self.move_dxy[0] + self.speed[0], self.move_dxy[1] + self.speed[1]]
-        intmove_dxy = int(self.move_dxy[0]), int(self.move_dxy[1])
-        self.rect.move_ip(intmove_dxy)
-        self.move_dxy = [self.move_dxy[0] - intmove_dxy[0], self.move_dxy[1] - intmove_dxy[1]]
+        self.pos[0] += self.speed[0]
+        self.pos[1] += self.speed[1]
+        self.rect.centerx, self.rect.centery = self.pos
         self.blitme()
         if utils.transgress_detect(self.rect): # 子弹越界删除
             self.kill()    
@@ -485,10 +487,10 @@ class enemy(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()  # 占用矩形范围
         self.size = (self.rect.width,self.rect.height)
-        self.pos = self.rect.center
+        self.pos = list(pos)
         self.bullet_speed = bullet_speed * sim_interval/10.0
         self.bullet_ID = bullet_ID
-        self.bullet_pos = self.rect.center
+        self.bullet_pos = pos
         self.screen_rect = self.screen.get_rect()  # 活动矩形范围
         self.rect.center = pos
         self.shooting = False
@@ -533,18 +535,13 @@ class enemy(pygame.sprite.Sprite):
         self.hook_enemyfire_group.add(blt) # 将发射的子弹归为敌军活力群
     def update(self):
         self.speed = utils.speed_tran(self.speed_value,self.speed_dir) # 速度属性
-        self.move_dxy[0] += self.speed[0]
-        self.move_dxy[1] += self.speed[1]
-        intmove_dxy = int(self.move_dxy[0]), int(self.move_dxy[1])
-        self.move_dxy[0] -= intmove_dxy[0]
-        self.move_dxy[1] -= intmove_dxy[1]
-        self.rect.move_ip(intmove_dxy)
-        self.pos = self.rect.center
+        self.pos[0] += self.speed[0]
+        self.pos[1] += self.speed[1]
         self.agl = -180/pi*atan2(self.speed_dir[0],-self.speed_dir[1])
         self.image = pygame.transform.rotate(self.init_image,self.agl)  # 加载图形，并缩小像素
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
-        self.rect.center = self.pos
+        self.rect.centerx, self.rect.centery = self.pos
         self.blitme()
     def update_time(self):# 更新敌机时间
         self.time += self.sim_interval
@@ -554,12 +551,12 @@ class enemy(pygame.sprite.Sprite):
         if rotate_img:
             self.image = pygame.transform.rotate(pygame.image.load(self.img_ad),self.agl)
             self.mask = pygame.mask.from_surface(self.image)
-            self.pos = self.rect.center
+            self.pos = list(self.rect.center)
             self.rect = self.image.get_rect()
-            self.rect.center = self.pos
+            self.rect.centerx, self.rect.centery = self.pos
     def move_to(self,P):
-        self.rect.center = P
-        self.pos = P
+        self.pos = list(P)
+        self.rect.centerx, self.rect.centery = P
         self.blitme()
     def hurt(self,damage):
         self.HP -= damage

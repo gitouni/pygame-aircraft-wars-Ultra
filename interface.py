@@ -686,7 +686,9 @@ def run_lab(gameset:game_set,globalset:utils.Setting,volume:float=1.0):
             'bullet_ID','bullet_shooting_cd_level','missile_num_level','missile_damage_level','missile_actime_level','missile_flyingtime_level']
     if not pygame.get_init():
         pygame.init()  # 初始化背景设置
+    if not pygame.font.get_init():
         pygame.font.init() # 初始化字体设置
+    if not pygame.mixer.get_init():
         pygame.mixer.init(11025)  # 音乐初始化
         pygame.mixer.music.set_volume(volume)  # 音量初始化
     

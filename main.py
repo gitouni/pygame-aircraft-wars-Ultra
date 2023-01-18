@@ -1,6 +1,7 @@
 # coding=utf-8
 import json
 import os
+from copy import deepcopy
 import pygame
 # extend import
 import pygame.event
@@ -98,7 +99,12 @@ def _run_video(statustext:tk.StringVar,root:tk.Tk):
     global GLOBAL_SET
     statustext.set('加载录像')
     root.update()
-    run_log_video(GLOBAL_SET,SIM_INTERVAL,VOLUME)
+    try:
+        run_log_video(deepcopy(GLOBAL_SET),SIM_INTERVAL,VOLUME)  # 录像设置不影响全局设置
+        statustext.set('录像正常退出')
+    except:
+        statustext.set('录像异常退出')
+        GLOBAL_SET.win_open['game'] = False
 
     
 
@@ -260,8 +266,12 @@ def run_game(gameset:game_set,globalset:utils.Setting,sim_interval:float,volume:
     gameset.setting['sim_interval'] = sim_interval
     gameset.setting['volume'] = volume
     gameset.setting['log'] = log
-    game_run = AutoGameRun(gameset,globalset,sim_interval,volume,log=log)
-    game_run.run()
+    
+    try:
+        game_run = AutoGameRun(gameset,globalset,sim_interval,volume,log=log)
+        game_run.run()
+    except:
+        globalset.win_open['game'] = False  # exception protection
     del game_run
     return
 
