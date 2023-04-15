@@ -150,18 +150,17 @@ class fighter(pygame.sprite.Sprite):
         self.screen.blit(self.image,self.rect)
     def update_shoot_time(self):
         self.shooting_time += self.sim_interval
-        self.shooting_time = min(self.shooting_time,self.shooting_cd)
     def update_launch_time(self):
         self.launching_time += self.sim_interval
         self.launching_time = min(self.launching_time,self.launching_cd)
     def update_bltpos(self):
         # 更新发射子弹的位置
-        self.bullet_pos = [(int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
-                        (int(self.pos[0]+0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
-                        (int(self.pos[0]-0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
-                        (int(self.pos[0]+0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
-                        (int(self.pos[0]-0.1*self.size[0]),int(self.pos[1]+0.08*self.size[1])),
-                        (int(self.pos[0]+0.1*self.size[0]),int(self.pos[1]+0.08*self.size[1])),]
+        self.bullet_pos = [[int(self.pos[0]-0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])],
+                        [int(self.pos[0]+0.3125*self.size[0]),int(self.pos[1]+0.08*self.size[1])],
+                        [int(self.pos[0]-0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])],
+                        [int(self.pos[0]+0.2*self.size[0]),int(self.pos[1]+0.08*self.size[1])],
+                        [int(self.pos[0]-0.1*self.size[0]),int(self.pos[1]+0.08*self.size[1])],
+                        [int(self.pos[0]+0.1*self.size[0]),int(self.pos[1]+0.08*self.size[1])],]
         
         self.missile_pos = [self.bullet_pos[0],self.bullet_pos[1],self.bullet_pos[0],self.bullet_pos[1],
                             self.bullet_pos[0],self.bullet_pos[1],self.bullet_pos[0],self.bullet_pos[1]]
@@ -183,7 +182,30 @@ class fighter(pygame.sprite.Sprite):
             blt2 = bullet(self.screen,self.bullet_pos[5],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
             self.hook_bullet_group.add(blt1)
             self.hook_bullet_group.add(blt2)  
-        
+            
+    def add_shoot(self, offset=0):
+        """
+        add excessive shot (more than one shot in one simulation interval)
+        """       
+        bullet_pos = deepcopy(self.bullet_pos) 
+        for i in range(len(bullet_pos)):
+            bullet_pos[i][1] -= offset
+            
+        if self.shoot1: # 射击点位1
+            blt1 = bullet(self.screen,bullet_pos[0],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            blt2 = bullet(self.screen,bullet_pos[1],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            self.hook_bullet_group.add(blt1)
+            self.hook_bullet_group.add(blt2)
+        if self.shoot2:
+            blt1 = bullet(self.screen,bullet_pos[2],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            blt2 = bullet(self.screen,bullet_pos[3],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            self.hook_bullet_group.add(blt1)
+            self.hook_bullet_group.add(blt2)
+        if self.shoot3:
+            blt1 = bullet(self.screen,bullet_pos[4],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            blt2 = bullet(self.screen,bullet_pos[5],self.bullet_speed,self.bullet_ID,(0,-1),self.sim_interval)
+            self.hook_bullet_group.add(blt1)
+            self.hook_bullet_group.add(blt2)  
         
     def launch_missile(self):
         threading.Thread(target=utils.thread_play_music,args=(self.missile_sound_file,self.volume_multiply)).start()
@@ -237,14 +259,22 @@ class fighter(pygame.sprite.Sprite):
         self.update_launch_time()
         self.update_shoot_time()
         if self.shooting:
-            if self.shooting_time-self.init_time >= self.shooting_cd:
+            has_shoot = False
+            offset = 0
+            while self.shooting_time-self.init_time >= self.shooting_cd:
                 if self.energy > (self.shoot1+self.shoot2+self.shoot3) and self.cooling > 0: # 满足要求时保持射击
-                    self.shoot() # 射击
+                    if not has_shoot:
+                        self.shoot() # 射击
+                        has_shoot = True
+                    else:
+                        offset += self.shooting_cd/1000*self.bullet_speed
+                        self.add_shoot(offset)
                     self.shooting_time -= self.shooting_cd
                     self.energy -= 1*(self.shoot1+self.shoot2+self.shoot3)/self.shooting_cd*25 # 消耗能量
                     self.cooling -= (self.shoot1)/self.shooting_cd*25
                 else:
                     self.shooting = False
+                    break
         if self.launching:
             if self.launching_time - self.init_time >= self.launching_cd and\
                self.energy >= 5 and self.cooling >= 3:

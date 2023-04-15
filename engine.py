@@ -472,7 +472,7 @@ class LogGameRun(AutoGameRun):
                     failed()
                     player_info.has_fail = True
                 elif (now - self.init_time) % 1000 > 500 and (not player_info.has_success):
-                    display_font_surface = self.display_font.render('Log Finished',True,[255,0,0])
+                    display_font_surface = self.display_font.render('   Log Finished',True,[255,0,0])
                     self.screen.blit(display_font_surface,self.CONFIG['setting']['fail_font_pos'])
             else:
                 if now - self.init_time > max_scene_time*1000 and len(self.enemy_Group.sprites())==0:

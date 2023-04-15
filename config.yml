@@ -96,7 +96,7 @@ help:
   help_note_txt: text/help_note.txt
 
 set:
-  sim_interval_list: [6,10,15,20] 
+  sim_interval_list: [7,10,15,22] 
   screen_size: [200,150]
   steps: 20
   min_volume: 0

@@ -201,7 +201,7 @@ def path_cal(PointList:list,speed:float):
 def csv2dict(fname:str):
     f = open(fname,'r')
     info_dict = dict()
-    keys = f.readline().rstrip().split(',')
+    keys = f.readline().rstrip().split(',')  # LEFT, RIGHT
     for key in keys:
         info_dict[key] = []
     for line in f.readlines():
